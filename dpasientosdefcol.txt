@@ -1,0 +1,120 @@
+// Programa   : DPASIENTOSDEFCOL
+// Fecha/Hora : 07/02/2020 04:25:33
+// Propósito  : Definir las Columnas del Comprobante Contable
+// Creado Por : Juan Navas
+// Llamado por:
+// Aplicación :
+// Tabla      :
+
+#INCLUDE "DPXBASE.CH"
+
+PROCE MAIN(cTipDoc,lDelete)
+  LOCAL aData:={},I,oTable,cWhere,aFields
+  LOCAL oMovInv:=OpenTable("SELECT * FROM DPMOVINV",.F.)
+
+  // Puede definir segun el usuario.
+
+  DEFAULT cTipDoc:="STD",;
+          lDelete:=.F.
+
+  IF !ISSQLFIND("DPTABLAS","TAB_NOMBRE"+GetWhere("=","DPASIENTOSCOL"))
+
+    aFields:=ASQL("SELECT CAM_NAME,CAM_TYPE,CAM_LEN,CAM_DEC,CAM_DESCRI FROM DPCAMPOS WHERE CAM_TABLE"+GetWhere("=","DPTIPDOCCLICOL"))
+
+    AADD(aFields,{"CTD_REPITE","L",001,0,"Repite"})
+    AADD(aFields,{"CTD_DEFAUL","C",250,0,"Valor por Defecto"})
+
+    EJECUTAR("DPTABLEADD","DPASIENTOSCOL","Definición Asiento Contable","<MULTIPLE>",aFields)
+
+    AEVAL(aFields,{|a,n| EJECUTAR("DPCAMPOSADD" ,"DPASIENTOSCOL",a[1],a[2],a[3],a[4],a[5],NIL,.T.,.T.)})
+
+  ENDIF
+
+  EJECUTAR("DBISTABLE",oDp:cDsnData,"DPASIENTOSCOL",.T.)
+
+  IF lDelete 
+    SQLDELETE("DPASIENTOSCOL")
+  ENDIF
+
+  IF !EJECUTAR("DBISTABLE",oDp:cDsnData,"DPASIENTOSCOL",.T.)
+    RETURN .T.
+  ENDIF
+
+  AADD(aData,{"MOC_ITEM"  ,"Núm.;Item"               ,NIL,0,05,"",.T.,.F.})
+  AADD(aData,{"MOC_CUENTA","Código;Cuenta"           ,NIL,0,10,"",.T.,.F.})
+  AADD(aData,{"CTA_DESCRI","Descripción;Cuenta"      ,NIL,0,15,"",.T.,.F.})
+
+  AADD(aData,{"MOC_CENCOS","Centro;Costo"            ,NIL,0,20,"",.T.,.T.})
+  AADD(aData,{"CEN_DESCRI","Descripción;Centro Costo",NIL,0,25,"",.T.,.F.})
+
+  AADD(aData,{"MOC_CODDEP","Cod.;Dpto."              ,NIL,0,30,"",.T.,.T.})
+  AADD(aData,{"DEP_DESCRI","Descripción;Dpto"        ,NIL,0,35,"",.T.,.F.})
+
+  AADD(aData,{"MOC_RIF"   ,"RIF.;Asociado"           ,NIL,0,40,"",.T.,.F.})
+  AADD(aData,{"RIF_NOMBRE","Nombre del Auxiliar"     ,NIL,0,45,"",.T.,.F.})
+
+
+  AADD(aData,{"MOC_DOCUME","Documento"               ,NIL,0,50,"",.T.,.F.})
+  AADD(aData,{"MOC_TIPO"  ,"Tipo;Doc"                ,NIL,0,55,"",.T.,.F.})
+  AADD(aData,{"MOC_DESCRI","Descripción"             ,NIL,0,60,"",.T.,.T.})
+  AADD(aData,{"MOC_MONTO" ,"Debe"                    ,"99,999,999,999,999.99",0,65,"",.T.,.F.})
+  AADD(aData,{"MOC_MTOCRE","Haber"                   ,"99,999,999,999,999.99",0,70,"",.T.,.F.})
+
+  AADD(aData,{"MOC_NUMPAR","Num.;Part"               ,NIL,0,75,"",.T.,.T.})
+  AADD(aData,{"MOC_ORIGEN","Org."                    ,NIL,0,80,"",.T.,.F.})
+  AADD(aData,{"MOC_REGAUD","Reg.;Aud"                ,NIL,0,85,"",.T.,.F.})
+  AADD(aData,{"MOC_CODAUX","Cód.;Aux."               ,NIL,0,90,"",.T.,.F.})
+  AADD(aData,{"MOC_DOCPAG","Doc.;Pago"               ,NIL,0,95,"",.T.,.F.})
+
+   FOR I=1 TO LEN(aData)
+
+      IF oMovInv:FieldPos(aData[I,1])>0 .AND. oMovInv:Fieldtype(aData[I,1])="N" .AND. !Empty(aData[I,3])
+         aData[I,3]:=FIELDPICTURE("DPASIENTOS",aData[I,1],.T.)
+      ENDIF
+
+      cWhere:="CAM_TABLE"+GetWhere("=","DPASIENTOS")+" AND CAM_NAME"+GetWhere("=",aData[I,1])
+      // ? SQLGET("DPCAMPOS","CAM_DESCRI",cWhere)
+
+      SQLUPDATE("DPCAMPOS","CAM_DESCRI",aData[I,2],cWhere)
+
+      oDp:cDescri:=SQLGET("DPCAMPOS","CAM_DESCRI",cWhere)
+
+      IF !Empty(oDp:cDescri)
+        aData[I,2]:=oDp:cDescri
+      ENDIF
+
+      oTable:=OpenTable("SELECT * FROM DPASIENTOSCOL WHERE CTD_TIPDOC"+GetWhere("=",cTipDoc)+" AND CTD_FIELD"+GetWhere("=",aData[I,1]),.T.)
+
+      IF oTable:RecCount()=0
+
+         oTable:AppendBlank() 
+         oTable:cWhere:=""
+         aData[I,5]:=I
+
+         oTable:Replace("CTD_TIPDOC",cTipDoc   )
+         oTable:Replace("CTD_FIELD" ,aData[I,1])
+         oTable:Replace("CTD_NUMPOS",aData[I,5])
+         oTable:Replace("CTD_SIZE"  ,aData[I,4])
+         oTable:Replace("CTD_AFTER" ,aData[I,6])
+         oTable:Replace("CTD_TITLE" ,aData[I,2])
+         oTable:Replace("CTD_PICTUR",aData[I,3])
+         oTable:Replace("CTD_ACTIVO",aData[I,7])
+         oTable:Replace("CTD_REPITE",aData[I,8])
+
+      ELSE
+
+        aData[I,4]:=oTable:CTD_SIZE
+
+      ENDIF
+
+      oTable:Commit(oTable:cWhere)
+
+      oTable:End()
+
+    
+   NEXT I
+
+   oMovInv:End()
+
+RETURN .T. 
+// EOF

@@ -1,0 +1,51 @@
+// Programa   : DPASIENTOSCOLPAR
+// Fecha/Hora : 20/10/2020 16:10:51
+// Propósito  : Parámetros del Tipo de Asientos
+// Creado Por : Juan Navas
+// Llamado por:
+// Aplicación :
+// Tabla      :
+
+#INCLUDE "DPXBASE.CH"
+
+PROCE MAIN(cTipDoc)
+ LOCAL oTable,cSql,aData:={},I,cField
+
+ DEFAULT cTipDoc:="STD"
+
+ cSql:=" SELECT "+;
+       " CTD_FIELD ,"+;
+       " CTD_TITLE ,"+;
+       " CTD_SIZE  ,"+;
+       " CTD_PICTUR,"+;
+       " CTD_REPITE,"+;
+       " CTD_ACTIVO "+;
+       " FROM DPASIENTOSCOL"+;
+       " WHERE CTD_TIPDOC "+GetWhere("=",cTipDoc)+;
+       " ORDER BY CTD_NUMPOS"+;
+       " "
+
+  aData :=ASQL(cSql)
+
+  IF Empty(aData) 
+    EJECUTAR("DPASIENTOSCOLADD",cTipDoc)
+    aData :=ASQL(cSql)
+  ENDIF
+
+  oTable:=OpenTable(" SELECT CTD_FIELD AS MOC_ITEM_TITLE FROM "+;
+                    " DPASIENTOSCOL"+;
+                    " WHERE CTD_TIPDOC "+GetWhere("=",cTipDoc),.F.)
+
+  FOR I=1 TO LEN(aData)
+    cField:=ALLTRIM(aData[I,1])
+    oTable:Replace(cField+"_TITLE"  ,aData[I,2])
+    oTable:Replace(cField+"_SIZE"   ,aData[I,3])
+    oTable:Replace(cField+"_PICTURE",aData[I,4])
+    oTable:Replace(cField+"_REPITE" ,aData[I,5])
+    oTable:Replace(cField+"_ACTIVO" ,aData[I,6])
+  NEXT I
+
+  oTable:End()
+
+RETURN oTable
+// EOF

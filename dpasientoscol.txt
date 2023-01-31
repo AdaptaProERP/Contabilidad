@@ -126,8 +126,9 @@ FUNCTION ViewData(aData,cTitle,cWhere_)
    oDPASIENTOSCOL:lTmdi    :=.T.
    oDPASIENTOSCOL:aHead    :={}
    oDPASIENTOSCOL:cTipDoc  :=cTipDoc
+   oDPASIENTOSCOL:nSizeFont:=SQLGET("DPASIENTOSTIPCOL","TDC_SIZEFN","TDC_TIPO"+GetWhere("=",cTipDoc)+" AND TDC_USUARI"+GetWhere("=",oDp:cUsuario))
+  oDPASIENTOSCOL:nSizeFont:=IF(Empty(oDPASIENTOSCOL:nSizeFont),14,oDPASIENTOSCOL:nSizeFont)
    oDPASIENTOSCOL:SetScript("DPASIENTOSCOL")
-
  
    // Guarda los parámetros del Browse cuando cierra la ventana
    oDPASIENTOSCOL:bValid   :={|| EJECUTAR("BRWSAVEPAR",oDPASIENTOSCOL)}   
@@ -268,7 +269,7 @@ FUNCTION ViewData(aData,cTitle,cWhere_)
 
      oBar:=oDPASIENTOSCOL:oBar
 
-     oBar:SetSize(NIL,80-25,.T.)
+     oBar:SetSize(NIL,80-10,.T.)
 
      oDPASIENTOSCOL:oBrw:GoBottom(.T.)
      oDPASIENTOSCOL:oBrw:Refresh(.T.)
@@ -561,8 +562,17 @@ ENDIF
 
 */
 
+  @ 45,98 GET oDPASIENTOSCOL:oSizeFont  VAR oDPASIENTOSCOL:nSizeFont;
+          VALID oDPASIENTOSCOL:VALFONT(oDPASIENTOSCOL:nSizeFont) SPINNER PICTURE "999" RIGHT OF oBar SIZE 40,20 PIXEL
+
+  @ 45,10 SAY " Tamaño Letra " OF oBar;
+             PIXEL BORDER SIZE 87,20 COLOR oDp:nClrYellowText,oDp:nClrYellow FONT oFont RIGHT 
+
   oDPASIENTOSCOL:BRWRESTOREPAR()
   
+RETURN .T.
+
+FUNCTION VALFONT()
 RETURN .T.
 
 FUNCTION UPDATETIPDOC()
@@ -664,7 +674,7 @@ FUNCTION LEERDATA(cWhere,oBrw,cServer,cTipDoc)
          " CTD_REPITE,"+;
          " CTD_ACTIVO "+;
          " FROM DPASIENTOSCOL"+;
-         " WHERE CTD_TIPDOC "+GetWhere("=",cTipDoc)+;
+         " WHERE CTD_TIPDOC "+GetWhere("=",cTipDoc)+" AND CTD_USUARI"+GetWhere("=",oDp:cUsuario)+;
          " ORDER BY CTD_NUMPOS"+;
          " "
 
@@ -794,14 +804,24 @@ FUNCTION GRABARTIPDOC()
  LOCAL aData := oDPASIENTOSCOL:oBrw:aArrayData,I,cWhere
  LOCAL aFiles,cFile
 
+ IF !ISSQLFIND("DPASIENTOSTIPCOL","TDC_TIPO"+GetWhere("=",oDPASIENTOSCOL:cTipDoc)+" AND TDC_USUARI"+GetWhere("=",oDp:cUsuario))
+
+    EJECUTAR("CREATERECORD","DPASIENTOSTIPCOL",{"TDC_TIPO"            ,"TDC_DESCRI","TDC_ACTIVO","TDC_SIZEFN","TDC_USUARI"},;
+                                               {oDPASIENTOSCOL:cTipDoc,"Estandar"  ,.T.         ,12          ,oDp:cUsuario},;
+                                                NIL,.T.,"TDC_TIPO"+GetWhere("=",oDPASIENTOSCOL:cTipDoc)+" AND TDC_USUARI"+GetWhere("=",oDp:cUsuario))
+
+ ENDIF
+
+ SQLUPDATE("DPASIENTOSTIPCOL","TDC_SIZEFN",oDPASIENTOSCOL:nSizeFont,"TDC_TIPO"+GetWhere("=",oDPASIENTOSCOL:cTipDoc)+" AND TDC_USUARI"+GetWhere("=",oDp:cUsuario))
 
  FOR I=1 TO LEN(aData)
 
      cWhere:="CTD_TIPDOC"+GetWhere("=",oDPASIENTOSCOL:cTipDoc)+" AND "+;
-             "CTD_FIELD" +GetWhere("=",aData[I,1]           )
+             "CTD_FIELD" +GetWhere("=",aData[I,1]            )+" AND "+;
+             "CTD_USUARI"+GetWhere("=",oDp:cUsuario          )
 
-     SQLUPDATE("DPASIENTOSCOL",{"CTD_TITLE","CTD_SIZE","CTD_PICTUR","CTD_REPITE","CTD_ACTIVO"},;
-                                {aData[I,2] ,aData[I,3],aData[I,4]  ,aData[I,5] ,aData[I,6]  },;
+     SQLUPDATE("DPASIENTOSCOL",{"CTD_TITLE","CTD_SIZE","CTD_PICTUR","CTD_REPITE","CTD_ACTIVO","CTD_USUARI"},;
+                                {aData[I,2] ,aData[I,3],aData[I,4]  ,aData[I,5] ,aData[I,6]  ,oDp:cUsuario},;
                                  cWhere)
 
  NEXT I

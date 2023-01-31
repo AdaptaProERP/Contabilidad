@@ -17,16 +17,44 @@ PROCE MAIN(cTipDoc,lDelete)
   DEFAULT cTipDoc:="STD",;
           lDelete:=.F.
 
-  IF !ISSQLFIND("DPTABLAS","TAB_NOMBRE"+GetWhere("=","DPASIENTOSCOL"))
+  IF !ISSQLFIND("DPTABLAS","TAB_NOMBRE"+GetWhere("=","DPASIENTOSTIPCOL")) .OR. .T.
+
+    AADD(aFields,{"TDC_TIPO"  ,"C",003,0,"Tipo"})
+    AADD(aFields,{"TDC_DESCRI","C",250,0,"Descripción"})
+    AADD(aFields,{"TDC_ACTIVO","L",001,0,"Registro Activo"})
+    AADD(aFields,{"TDC_SIZEFN","N",003,0,"Tamaño de la Fuente de Letra"})
+    AADD(aFields,{"TDC_USUARI","C",003,0,"Usuario"})
+
+    EJECUTAR("DPTABLEADD","DPASIENTOSTIPCOL","Tipos de Asientos Asiento Contable","<MULTIPLE>",aFields)
+    AEVAL(aFields,{|a,n| EJECUTAR("DPCAMPOSADD" ,"DPASIENTOSTIPCOL",a[1],a[2],a[3],a[4],a[5],NIL,.T.,.T.)})
+
+  ENDIF
+
+  EJECUTAR("DBISTABLE",oDp:cDsnData,"DPASIENTOSTIPCOL",.T.)
+
+  IF !ISSQLFIND("DPASIENTOSTIPCOL","TDC_TIPO"+GetWhere("=","STD"))
+
+    EJECUTAR("CREATERECORD","DPASIENTOSTIPCOL",{"TDC_TIPO","TDC_DESCRI","TDC_ACTIVO","TDC_SIZEFN","TDC_USUARI"},;
+                                               {"STD"     ,"Estandar"  ,.T.         ,12          ,oDp:cUsuario},;
+                                                NIL,.T.,"TDC_TIPO"+GetWhere("=","STD")+" AND TDC_USUARI"+GetWhere("=",oDp:cUsuario))
+
+  ENDIF
+
+  aFields:={}
+
+  IF !ISSQLFIND("DPTABLAS","TAB_NOMBRE"+GetWhere("=","DPASIENTOSCOL")) .OR. .T.
 
     aFields:=ASQL("SELECT CAM_NAME,CAM_TYPE,CAM_LEN,CAM_DEC,CAM_DESCRI FROM DPCAMPOS WHERE CAM_TABLE"+GetWhere("=","DPTIPDOCCLICOL"))
 
     AADD(aFields,{"CTD_REPITE","L",001,0,"Repite"})
     AADD(aFields,{"CTD_DEFAUL","C",250,0,"Valor por Defecto"})
+    AADD(aFields,{"CTD_USUARI","C",003,0,"Usuario"})
 
     EJECUTAR("DPTABLEADD","DPASIENTOSCOL","Definición Asiento Contable","<MULTIPLE>",aFields)
 
     AEVAL(aFields,{|a,n| EJECUTAR("DPCAMPOSADD" ,"DPASIENTOSCOL",a[1],a[2],a[3],a[4],a[5],NIL,.T.,.T.)})
+
+ViewArray(aFields)
 
   ENDIF
 
@@ -83,7 +111,9 @@ PROCE MAIN(cTipDoc,lDelete)
         aData[I,2]:=oDp:cDescri
       ENDIF
 
-      oTable:=OpenTable("SELECT * FROM DPASIENTOSCOL WHERE CTD_TIPDOC"+GetWhere("=",cTipDoc)+" AND CTD_FIELD"+GetWhere("=",aData[I,1]),.T.)
+      cWhere:="CTD_TIPDOC"+GetWhere("=",cTipDoc)+" AND CTD_FIELD"+GetWhere("=",aData[I,1])+" AND CTD_USUARI"+GetWhere("=",oDp:cUsuario)
+
+      oTable:=OpenTable("SELECT * FROM DPASIENTOSCOL WHERE "+cWhere,.T.)
 
       IF oTable:RecCount()=0
 
@@ -100,6 +130,7 @@ PROCE MAIN(cTipDoc,lDelete)
          oTable:Replace("CTD_PICTUR",aData[I,3])
          oTable:Replace("CTD_ACTIVO",aData[I,7])
          oTable:Replace("CTD_REPITE",aData[I,8])
+         oTable:Replace("CTD_USUARI",oDp:cUsuario)
 
       ELSE
 

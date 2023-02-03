@@ -9,9 +9,22 @@
 #INCLUDE "DPXBASE.CH"
 
 PROCE MAIN(cTipDoc)
- LOCAL oTable,cSql,aData:={},I,cField
+ LOCAL oTable,cSql,aData:={},I,cField,oDb:=OpenOdbc(oDp:cDsnData)
 
  DEFAULT cTipDoc:="STD"
+
+ IF !EJECUTAR("DBISTABLE",oDp:cDsnData,"DPASIENTOSTIPCOL",.F.)
+    EJECUTAR("DPASIENTOSDEFCOL")
+ ENDIF
+
+ IF !EJECUTAR("ISFIELDMYSQL",oDb,"DPASIENTOSTIPCOL","TDC_USUARI")
+   EJECUTAR("DPCAMPOSADD" ,"DPASIENTOSTIPCOL","TDC_USUARI","C",3,0)
+   EJECUTAR("DPCAMPOSADD" ,"DPASIENTOSCOL"   ,"CTD_USUARI","C",3,0)
+ ENDIF
+
+ IF COUNT("DPASIENTOSCOL","WHERE CTD_TIPDOC "+GetWhere("=",cTipDoc)+" AND CTD_USUARI"+GetWhere("=",oDp:cUsuario))=0
+    EJECUTAR("DPASIENTOSDEFCOL")
+ ENDIF
 
  cSql:=" SELECT "+;
        " CTD_FIELD ,"+;
@@ -21,7 +34,7 @@ PROCE MAIN(cTipDoc)
        " CTD_REPITE,"+;
        " CTD_ACTIVO "+;
        " FROM DPASIENTOSCOL"+;
-       " WHERE CTD_TIPDOC "+GetWhere("=",cTipDoc)+;
+       " WHERE CTD_TIPDOC "+GetWhere("=",cTipDoc)+" AND CTD_USUARI"+GetWhere("=",oDp:cUsuario)+;
        " ORDER BY CTD_NUMPOS"+;
        " "
 
@@ -35,6 +48,11 @@ PROCE MAIN(cTipDoc)
   oTable:=OpenTable(" SELECT CTD_FIELD AS MOC_ITEM_TITLE FROM "+;
                     " DPASIENTOSCOL"+;
                     " WHERE CTD_TIPDOC "+GetWhere("=",cTipDoc),.F.)
+
+  oTable:MOC_MTOCRE_TITLE  :="Total"+CRLF+"Divisa"
+  oTable:MOC_MTOCRE_ACTIVO :=.F.
+  oTable:MOC_MTOCRE_PICTURE:="99,999,999,999,999.99"
+  oTable:MOC_MTOCRE_SIZE   :=120
 
   FOR I=1 TO LEN(aData)
     cField:=ALLTRIM(aData[I,1])

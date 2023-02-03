@@ -79,16 +79,8 @@ PROCE MAIN(cActual,cNumero,dFecha,lView,cScope,cWhereG,cCodDep,cCenCos,cNumEje,c
 
  // Font Para el Browse
 
- IF Empty(oDp:cModeVideo)
-   DEFINE FONT oFontB NAME "TAHOMA"   SIZE 0,  nSizeFont BOLD 
- // -11
-   DEFINE FONT oFont  NAME "TAHOMA"   SIZE 0,  nSizeFont      
- // -11
- ELSE
-   DEFINE FONT oFontB NAME "TAHOMA"   SIZE 0, nSizeFont BOLD
-   DEFINE FONT oFont  NAME "TAHOMA"   SIZE 0, nSizeFont
- // -14
- ENDIF
+ DEFINE FONT oFontB NAME "TAHOMA"   SIZE 0, nSizeFont BOLD
+ DEFINE FONT oFont  NAME "TAHOMA"   SIZE 0, nSizeFont
 
  oDefCol:=EJECUTAR("DPASIENTOSCOLPAR",cTipDoc)
 
@@ -611,7 +603,7 @@ PROCE MAIN(cActual,cNumero,dFecha,lView,cScope,cWhereG,cCodDep,cCenCos,cNumEje,c
       oCol:nWidth   :=38
    ENDIF
 
-   IF oDefCol:MOC_ORIGEN_ACTIVO
+   IF oDefCol:MOC_CODAUX_ACTIVO
       oCol:=oGrid:AddCol("MOC_CODAUX") 
       // oCol:cTitle:="Código"+CRLF+"Auxiliar"
       oCol:cTitle   :=oDefCol:MOC_CODAUX_TITLE
@@ -640,11 +632,24 @@ PROCE MAIN(cActual,cNumero,dFecha,lView,cScope,cWhereG,cCodDep,cCenCos,cNumEje,c
 
   oCbte:Activate({||oCbte:INICIO()})
 
-//  oGrid:oBrw:bClrStd:= {|oBrw,nClrText,aLine|aLine:=oGrid:oBrw:aArrayData[oGrid:oBrw:nArrayAt],;
-//                                             nClrText:=IF(aLine[oCbte:nColMonto]>0,CLR_HBLUE,CLR_HRED),;
-//                                             {nClrText,iif( oGrid:oBrw:nArrayAt%2=0, oGrid:nClrPane1, oGrid:nClrPane2 ) } }
+  // Ajusta el formulario segun Alto de la Resolución
+  EJECUTAR("FRMMOVEDOWN",oGrid:oBrw,oCbte)
 
-   EJECUTAR("FRMMOVEDOWN",oGrid:oBrw,oCbte)
+  // Copia Altura y Tamaño del Grid
+  oCbte:oGrid     :=oGrid
+  oCbte:nTop      :=oGrid:oBrw:nTop()
+  oCbte:nLeft     :=oGrid:oBrw:nLeft()
+  oCbte:nHeightBrw:=oGrid:oBrw:nHeight()
+
+  // Cuando el Tamaño de la Ventana Principal es Reajustada, reajusta el Dialogo y luego el Browse incrustado
+  oCbte:oWnd:bResized:={||oCbte:oDlg:Move(0,0,oCbte:oWnd:nWidth()-10,oCbte:oWnd:nHeight()-10,.T.),;
+                          oCbte:oGrid:oBrw:Move(oCbte:nTop,oCbte:nLeft,oCbte:oWnd:nWidth()-20,oCbte:nHeightBrw,.T.)}
+
+  IF oCbte:nWidth_Size>0
+    oCbte:oWnd:SetSize(oCbte:nWidth_Size,NIL,.T.) // Valor Obtenido desde GRIDRESTORE, Previamente Guardado mediante TDOCGRIDEND cuando sale del formulario garda en dpcbte*.grid       
+    oGrid:AdjustBtn()
+  ENDIF
+
 
 RETURN .T.
 
@@ -1636,11 +1641,11 @@ RETURN EJECUTAR("DPCBTEFRMORG",oCbte:CBT_CODSUC,oCbte:CBT_NUMERO,oCbte:CBT_FECHA
 FUNCTION MNUAUXORIGEN()
 
   IF oGrid:MOC_ORIGEN="VTA" .AND. !Empty(oGrid:MOC_CODAUX)
-     EJECUTAR("DPCLIENTESCON",NIL,oGrid:MOC_CODAUX)
+     EJECUTAR("DPCLIENTES",0,oGrid:MOC_CODAUX)
   ENDIF
 
   IF oGrid:MOC_ORIGEN="COM" .AND. !Empty(oGrid:MOC_CODAUX)
-     EJECUTAR("DPPROVEEDORCTA",NIL,oGrid:MOC_CODAUX)
+     EJECUTAR("DPPROVEEDOR",0,oGrid:MOC_CODAUX)
   ENDIF
 
 RETURN .T.

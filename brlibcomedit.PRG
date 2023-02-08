@@ -1,0 +1,1883 @@
+// Programa   : BRLIBCOMEDIT
+// Fecha/Hora : 18/11/2022 22:43:00
+// Propósito  : "Libro de Compras editable"
+// Creado Por : Automáticamente por BRWMAKER
+// Llamado por: <DPXBASE>
+// Aplicación : Gerencia
+// Tabla      : <TABLA>
+
+#INCLUDE "DPXBASE.CH"
+
+PROCE MAIN(cWhere,cCodSuc,nPeriodo,dDesde,dHasta,cTitle,dFchDec,lView)
+   LOCAL aData,aFechas,cFileMem:="USER\BRLIBCOMEDIT.MEM",V_nPeriodo:=1,cCodPar,dFchPag:=CTOD("")
+   LOCAL V_dDesde:=CTOD(""),V_dHasta:=CTOD("")
+   LOCAL cServer:=oDp:cRunServer
+   LOCAL lConectar:=.F.,aFields:={},aTipDoc:={}
+   LOCAL aIva:=ATABLE("SELECT TIP_CODIGO FROM DPIVATIP WHERE TIP_ACTIVO=1 AND TIP_COMPRA=1")
+
+   oDp:cRunServer:=NIL
+
+   IF Type("oLIBCOMEDIT")="O" .AND. oLIBCOMEDIT:oWnd:hWnd>0
+      RETURN EJECUTAR("BRRUNNEW",oLIBCOMEDIT,GetScript())
+   ENDIF
+
+   DEFAULT oDp:lCondominio:=.F.
+
+   IF !Empty(cServer)
+
+     MsgRun("Conectando con Servidor "+cServer+" ["+ALLTRIM(SQLGET("DPSERVERBD","SBD_DOMINI","SBD_CODIGO"+GetWhere("=",cServer)))+"]",;
+            "Por Favor Espere",{||lConectar:=EJECUTAR("DPSERVERDBOPEN",cServer)})
+
+     IF !lConectar
+        RETURN .F.
+     ENDIF
+
+   ENDIF
+
+   cTitle:="Registro Compras para Proveedores Esporádicos en el Libro de Compras Editable" +IF(Empty(cTitle),"",cTitle)
+
+   oDp:oFrm:=NIL
+
+   IF FILE(cFileMem) .AND. nPeriodo=NIL
+      RESTORE FROM (cFileMem) ADDI
+      nPeriodo:=V_nPeriodo
+   ENDIF
+
+   DEFAULT cCodSuc :=oDp:cSucursal,;
+           nPeriodo:=4,;
+           dDesde  :=CTOD(""),;
+           dHasta  :=CTOD(""),;
+           lView   :=.F.   
+
+   DEFAULT dFchDec :=FCHFINMES(oDp:dFecha)
+
+   DEFAULT cWhere:="LBC_CODSUC"+GetWhere("=",cCodSuc)+" AND "+;
+                   "LBC_FCHDEC"+GetWhere("=",dFchDec)
+
+
+   
+
+   dFchPag:=SQLGET("DPDOCPROPROG","PLP_FECHA","PLP_TIPDOC"+GetWhere("=","F30")+" AND PLP_FCHDEC"+GetWhere("=",dFchDec))
+
+   // Obtiene el Código del Parámetro
+
+   IF !Empty(cWhere)
+
+      cCodPar:=ATAIL(_VECTOR(cWhere,"="))
+
+      IF TYPE(cCodPar)="C"
+        cCodPar:=SUBS(cCodPar,2,LEN(cCodPar))
+        cCodPar:=LEFT(cCodPar,LEN(cCodPar)-1)
+      ENDIF
+
+   ENDIF
+
+   IF .T. .AND. (!nPeriodo=11 .AND. (Empty(dDesde) .OR. Empty(dhasta)))
+
+       aFechas:=EJECUTAR("DPDIARIOGET",nPeriodo)
+       dDesde :=aFechas[1]
+       dHasta :=aFechas[2]
+
+   ENDIF
+
+//   IF .F.
+
+      IF nPeriodo=10
+        dDesde :=V_dDesde
+        dHasta :=V_dHasta
+      ELSE
+        aFechas:=EJECUTAR("DPDIARIOGET",nPeriodo)
+        dDesde :=aFechas[1]
+        dHasta :=aFechas[2]
+      ENDIF
+
+     aData :=LEERDATA(HACERWHERE(dDesde,dHasta,cWhere),NIL,cServer,NIL)
+
+/*
+   ELSEIF (.T.)
+
+     aData :=LEERDATA(HACERWHERE(dDesde,dHasta,cWhere),NIL,cServer,NIL)
+
+   ENDIF
+*/
+
+   aTipDoc:={"FAC","DEB","CRE"}
+
+// ATABLE("SELECT TDC_TIPO FROM DPTIPDOCPRO WHERE TDC_ACTIVO=1 AND TDC_LIBCOM=1")
+
+   aFields:=ACLONE(oDp:aFields)
+
+   IF Empty(aData)
+      MensajeErr("no hay "+cTitle,"Información no Encontrada")
+      RETURN .F.
+   ENDIF
+
+   ViewData(aData,cTitle,oDp:cWhere)
+
+   oDp:oFrm:=oLIBCOMEDIT
+
+RETURN .T.
+
+
+FUNCTION ViewData(aData,cTitle,cWhere_)
+   LOCAL oBrw,oCol,aTotal:=ATOTALES(aData)
+   LOCAL oFont,oFontB
+   LOCAL aPeriodos:=ACLONE(oDp:aPeriodos)
+   LOCAL aCoors:=GetCoors( GetDesktopWindow() )
+
+   DEFINE FONT oFont  NAME "Tahoma"   SIZE 0, -12
+   DEFINE FONT oFontB NAME "Tahoma"   SIZE 0, -12 BOLD
+
+   DpMdi(cTitle,"oLIBCOMEDIT","BRLIBCOMEDIT.EDT")
+// oLIBCOMEDIT:CreateWindow(0,0,100,550)
+   oLIBCOMEDIT:Windows(0,0,aCoors[3]-160,MIN(4318,aCoors[4]-10),.T.) // Maximizado
+
+   oLIBCOMEDIT:cCodSuc  :=cCodSuc
+   oLIBCOMEDIT:lMsgBar  :=.F.
+   oLIBCOMEDIT:cPeriodo :=aPeriodos[nPeriodo]
+   oLIBCOMEDIT:cCodSuc  :=cCodSuc
+   oLIBCOMEDIT:nPeriodo :=nPeriodo
+   oLIBCOMEDIT:cNombre  :=""
+   oLIBCOMEDIT:dDesde   :=dDesde
+   oLIBCOMEDIT:cServer  :=cServer
+   oLIBCOMEDIT:dHasta   :=dHasta
+   oLIBCOMEDIT:cWhere   :=cWhere
+   oLIBCOMEDIT:cWhere_  :=cWhere_
+   oLIBCOMEDIT:cWhereQry:=""
+   oLIBCOMEDIT:cSql     :=oDp:cSql
+   oLIBCOMEDIT:oWhere   :=TWHERE():New(oLIBCOMEDIT)
+   oLIBCOMEDIT:cCodPar  :=cCodPar // Código del Parámetro
+   oLIBCOMEDIT:lWhen    :=.T.
+   oLIBCOMEDIT:cTextTit :="" // Texto del Titulo Heredado
+   oLIBCOMEDIT:oDb      :=oDp:oDb
+   oLIBCOMEDIT:cBrwCod  :="LIBCOMEDIT"
+   oLIBCOMEDIT:lTmdi    :=.T.
+   oLIBCOMEDIT:aHead    :={}
+   oLIBCOMEDIT:lBarDef  :=.T. // Activar Modo Diseño.
+   oLIBCOMEDIT:dFchDec  :=dFchDec
+   oLIBCOMEDIT:dFchPag  :=dFchPag
+   oLIBCOMEDIT:aFields  :=ACLONE(aFields)
+   oLIBCOMEDIT:lSave    :=.F.
+   oLIBCOMEDIT:aTipDoc  :=ACLONE(aTipDoc)
+   oLIBCOMEDIT:aIva     :=ACLONE(aIva)
+   oLIBCOMEDIT:cCodSuc  :=oDp:cSucursal
+   oLIBCOMEDIT:cWherePro:=" NOT (LEFT(PRO_RIF,1)"+GetWhere("=","G")+" OR LEFT(PRO_RIF,1)"+GetWhere("=","T")+")"
+
+   oLIBCOMEDIT:cItemChange:=""
+   oLIBCOMEDIT:LBC_FCHDEC :=dFchDec
+
+   // Guarda los parámetros del Browse cuando cierra la ventana
+   oLIBCOMEDIT:bValid   :={|| EJECUTAR("BRWSAVEPAR",oLIBCOMEDIT)}
+
+   oLIBCOMEDIT:lBtnRun     :=.F.
+   oLIBCOMEDIT:lBtnMenuBrw :=.F.
+   oLIBCOMEDIT:lBtnSave    :=.F.
+   oLIBCOMEDIT:lBtnCrystal :=.F.
+   oLIBCOMEDIT:lBtnRefresh :=.F.
+   oLIBCOMEDIT:lBtnHtml    :=.T.
+   oLIBCOMEDIT:lBtnExcel   :=.T.
+   oLIBCOMEDIT:lBtnPreview :=.T.
+   oLIBCOMEDIT:lBtnQuery   :=.F.
+   oLIBCOMEDIT:lBtnOptions :=.T.
+   oLIBCOMEDIT:lBtnPageDown:=.T.
+   oLIBCOMEDIT:lBtnPageUp  :=.T.
+   oLIBCOMEDIT:lBtnFilters :=.T.
+   oLIBCOMEDIT:lBtnFind    :=.T.
+   oLIBCOMEDIT:lBtnColor   :=.T.
+
+   oLIBCOMEDIT:nClrPane1:=16775408
+   oLIBCOMEDIT:nClrPane2:=16771797
+
+   oLIBCOMEDIT:nClrText :=0
+   oLIBCOMEDIT:nClrText1:=4227072
+   oLIBCOMEDIT:nClrText2:=0
+   oLIBCOMEDIT:nClrText3:=0
+
+   oLIBCOMEDIT:oBrw:=TXBrowse():New( IF(oLIBCOMEDIT:lTmdi,oLIBCOMEDIT:oWnd,oLIBCOMEDIT:oDlg ))
+   oLIBCOMEDIT:oBrw:SetArray( aData, .F. )
+   oLIBCOMEDIT:oBrw:SetFont(oFont)
+
+   oLIBCOMEDIT:oBrw:lFooter     := .T.
+   oLIBCOMEDIT:oBrw:lHScroll    := .T.
+   oLIBCOMEDIT:oBrw:nHeaderLines:= 3
+   oLIBCOMEDIT:oBrw:nDataLines  := 1
+   oLIBCOMEDIT:oBrw:nFooterLines:= 1
+   oLIBCOMEDIT:oBrw:nFreeze     :=3
+
+   oLIBCOMEDIT:aData            :=ACLONE(aData)
+
+   AEVAL(oLIBCOMEDIT:oBrw:aCols,{|oCol|oCol:oHeaderFont:=oFontB})
+
+   AEVAL(oDp:aFields,{|a,n| oLIBCOMEDIT:SET("COL_"+a[1],n)})
+
+   IF Empty(aData[1,1])
+      aData[1,oLIBCOMEDIT:COL_LBC_NUMPAR]:=STRZERO(1,5)
+      aData[1,oLIBCOMEDIT:COL_LBC_ITEM]  :=STRZERO(1,5)
+   ENDIF
+
+   AEVAL(aData,{|a,n|aData[n,oLIBCOMEDIT:COL_LBC_COMORG]:=ALLTRIM(SAYOPTIONS("DPLIBCOMPRASDET","LBC_COMORG",a[oLIBCOMEDIT:COL_LBC_COMORG]))})
+
+
+   // Campo: LBC_TIPDOC
+   oCol:=oLIBCOMEDIT:oBrw:aCols[1]
+   oCol:cHeader       :='Tipo'+CRLF+'Doc.'
+   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+   oCol:nWidth        := 40
+   oCol:nEditType     :=IIF( lView, 0, 1)
+   oCol:bOnPostEdit   :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTTIPDOC(oCol,uValue,1,nKey)}
+   oCol:aEditListTxt  :=oLIBCOMEDIT:aTipDoc
+   oCol:aEditListBound:=oLIBCOMEDIT:aTipDoc
+   oCol:nEditType     :=EDIT_LISTBOX
+
+
+  // Campo: LBC_FECHA
+  oCol:=oLIBCOMEDIT:oBrw:aCols[2]
+  oCol:cHeader      :='Fecha'+CRLF+'Emisión'
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 72
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFECHA(oCol,uValue,2,nKey)}
+
+//  oCol:bStrData     :={|dFecha,oCol|dFecha:=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_FECHA],;
+//                                  IF(aLine[oLIBCOMEDIT:COL_LBC_ITEM]<>STRZERO(1,5),"",DTOC(dFecha))}
+
+
+  // Campo: LBC_RIF
+  oCol:=oLIBCOMEDIT:oBrw:aCols[3]
+  oCol:cHeader      :='RIF'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 100
+  oCol:nEditType    :=IIF( lView, 0, EDIT_GET_BUTTON)
+  oCol:bEditBlock   :={||oLIBCOMEDIT:EDITRIF(3,.F.)}
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:VALRIF(oCol,uValue,3,nKey)}
+  oCol:lButton      :=.F.
+
+  // Campo: PRO_NOMBRE
+  oCol:=oLIBCOMEDIT:oBrw:aCols[4]
+  oCol:cHeader      :='Nombre o Razon Social'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 220
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:VALRIFNOMBRE(oCol,uValue,4,nKey)}
+  oCol:bStrData     :={|cData,oCol|cData:= oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_PRO_NOMBRE],;
+                                    oCol  := oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_PRO_NOMBRE],;
+                                    cData}
+
+
+  // Campo: LBC_CODCTA
+  oCol:=oLIBCOMEDIT:oBrw:aCols[5]
+  oCol:cHeader      :='Cuenta'+CRLF+'Contable'
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 100
+  oCol:nEditType    :=IIF( lView, 0, EDIT_GET_BUTTON)
+  oCol:bEditBlock   :={||oLIBCOMEDIT:EDITCTA(5,.F.)}
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:VALCTA(oCol,uValue,5,nKey)}
+  oCol:lButton      :=.F.
+
+  // Campo: CTA_DESCRI
+  oCol:=oLIBCOMEDIT:oBrw:aCols[6]
+  oCol:cHeader      :='Nombre'+CRLF+'Cuenta'
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 200
+
+  // Campo: LBC_DESCRI
+  oCol:=oLIBCOMEDIT:oBrw:aCols[7]
+  oCol:cHeader      :='Descripción'+CRLF+"del Asiento"
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 300
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,7,nKey,NIL,.T.)}
+
+  // Campo: LBC_NUMFAC
+  oCol:=oLIBCOMEDIT:oBrw:aCols[8]
+  oCol:cHeader      :='Número'+CRLF+'Doc'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 80
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:VALNUMFAC(oCol,uValue,8,nKey)}
+
+  // Campo: LBC_NUMFIS
+  oCol:=oLIBCOMEDIT:oBrw:aCols[9]
+  oCol:cHeader      :='Número'+CRLF+'Fiscal'
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 80
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,9,nKey,NIL,.T.)}
+
+  // Campo: LBC_FACAFE
+  oCol:=oLIBCOMEDIT:oBrw:aCols[10]
+  oCol:cHeader      :='Factura'+CRLF+'Afectada'
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 120
+  oCol:nEditType    :=0 // Solo Activa si es DEBITO O CREDITO IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,10,nKey)}
+
+  // Campo: LBC_BASIMP
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_BASIMP]
+  oCol:cHeader      :='Monto'+CRLF+'sin IVA'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 120
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:cEditPicture :='9,999,999,999,999,999.99'
+  oCol:bStrData     :={|nMonto,oCol|nMonto:= oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_BASIMP],;
+                                    oCol  := oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_BASIMP],;
+                                    FDP(nMonto,oCol:cEditPicture)}
+  oCol:cFooter      :=FDP(aTotal[oLIBCOMEDIT:COL_LBC_BASIMP],oCol:cEditPicture)
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:VALLBCBASIMP(oCol,uValue,oLIBCOMEDIT:COL_LBC_BASIMP,nKey)}
+
+
+
+  // Campo: LBC_TIPIVA
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_TIPIVA]
+  oCol:cHeader       :='IVA'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth        := 72
+  oCol:nEditType     :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit   :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTTIPIVA(oCol,uValue,oLIBCOMEDIT:COL_LBC_TIPIVA,nKey)}
+  oCol:aEditListTxt  :=oLIBCOMEDIT:aIva
+  oCol:aEditListBound:=oLIBCOMEDIT:aIva
+  oCol:nEditType     :=EDIT_LISTBOX
+
+  // Campo: LBC_PORIVA
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_PORIVA]
+  oCol:cHeader      :='%'+CRLF+'IVA'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 80
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_PORIVA,nKey)}
+  oCol:cEditPicture :='99.99'
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_PORIVA],;
+                               oCol  := oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_PORIVA],;
+                               FDP(nMonto,oCol:cEditPicture)}
+
+  oCol:cFooter      :=FDP(aTotal[oLIBCOMEDIT:COL_LBC_PORIVA	],oCol:cEditPicture)
+
+
+  // Campo: LBC_MTOIVA
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_MTOIVA]
+  oCol:cHeader      :='Monto'+CRLF+'IVA'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 80
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_MTOIVA,nKey)}
+  oCol:cEditPicture :='9,999,999,999,999,999.99'
+  oCol:bStrData     :={|nMonto,oCol|nMonto:= oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_MTOIVA],;
+                                    oCol  := oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_MTOIVA],;
+                                    FDP(nMonto,oCol:cEditPicture)}
+
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:cFooter      :=FDP(aTotal[oLIBCOMEDIT:COL_LBC_MTOIVA],oCol:cEditPicture)
+
+ // Campo: LBC_MTONET
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_MTONET]
+  oCol:cHeader      :='Monto'+CRLF+'Neto'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 80
+  oCol:nEditType    :=IIF( lView, 0, 1)
+//oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_MTONET,nKey)}
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:CALBASEIMP(oCol,uValue,oLIBCOMEDIT:COL_LBC_MTONET,nKey)}
+
+  oCol:cEditPicture :='9,999,999,999,999,999.99'
+  oCol:cFooter      :=FDP(aTotal[oLIBCOMEDIT:COL_LBC_MTONET],oCol:cEditPicture)
+
+  oCol:bStrData     :={|nMonto,oCol|nMonto:= oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_MTONET],;
+                                    oCol  := oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_MTONET],;
+                                    FDP(nMonto,oCol:cEditPicture)}
+
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+
+ // Campo: LBC_PORRTI
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_PORRTI]
+  oCol:cHeader      :="%"+CRLF+"RET"+CRLF+"IVA"+CRLF+"IVA"
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 40
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:VALPORRTI(oCol,uValue,oLIBCOMEDIT:COL_LBC_PORRTI,nKey)}
+  oCol:cEditPicture :='9,999,999,999,999,999.99'
+
+  // Campo: LBC_MTORTI
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_MTORTI]
+  oCol:cHeader      :='Monto'+CRLF+'Retención'+CRLF+"IVA"
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 136
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:cEditPicture :='9,999,999,999,999,999.99'
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_MTORTI],;
+                              oCol  := oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_MTORTI],;
+                              FDP(nMonto,oCol:cEditPicture)}
+  oCol:cFooter      :=FDP(aTotal[oLIBCOMEDIT:COL_LBC_MTORTI],oCol:cEditPicture)
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_MTORTI,nKey)}
+
+
+  // Campo: LBC_NUMRTI
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_NUMRTI]
+  oCol:cHeader      :='Número'+CRLF+'Retención'+CRLF+"IVA"
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 80
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_NUMRTI,nKey)}
+
+  // Campo: LBC_CONISR
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_CONISR]
+  oCol:cHeader      :='Con-'+CRLF+'cepto'+CRLF+"ISLR"
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 80
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_CONISR,nKey)}
+
+ // Campo: LBC_PORISR
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_PORISR]
+  oCol:cHeader      :="%"+CRLF+"RET"+CRLF+"ISR"
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 40
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:VALPORISR(oCol,uValue,oLIBCOMEDIT:COL_LBC_PORISR,nKey)}
+  oCol:cEditPicture :='9,999,999,999,999,999.99'
+
+  // Campo: LBC_MTOISR
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_MTOISR]
+  oCol:cHeader      :='Monto'+CRLF+'Retención'+CRLF+"ISR"
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 136
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:cEditPicture :='9,999,999,999,999,999.99'
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_MTOISR],;
+                              oCol  := oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_MTOISR],;
+                              FDP(nMonto,oCol:cEditPicture)}
+  oCol:cFooter      :=FDP(aTotal[oLIBCOMEDIT:COL_LBC_MTOISR],oCol:cEditPicture)
+  oCol:nEditType    :=IIF( lView, 0, 1)
+  oCol:bOnPostEdit  :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_MTOISR,nKey)}
+
+
+  // Campo: LBC_USOCON
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_USOCON]
+  oCol:cHeader       :='Contra-'+CRLF+'Partida'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth        := 80
+  oCol:nEditType     :=IIF( lView, 0, 1)
+//oCol:aEditListTxt  :={"Contrapartida","Cuentas x Pagar","Caja","Caja Divisa","Banco","Banco Divisa"} // ,"Cuenta Contable"}
+  oCol:aEditListTxt  :={"Cuentas x Pagar","Caja","Caja Divisa","Banco","Banco Divisa"}
+  oCol:aEditListBound:=oCol:aEditListTxt
+  oCol:bOnPostEdit   :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_USOCON,nKey)}
+  oCol:nEditType     :=EDIT_LISTBOX
+
+  // Campo: LBC_COMORG
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_COMORG]
+  oCol:cHeader      :='Nacional'+CRLF+'Importado'
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 32
+  oCol:bClrStd      := {|nClrText,uValue|uValue:=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_COMORG],;
+                         nClrText:=COLOR_OPTIONS("DPLIBCOMPRASDET ","LBC_COMORG",uValue),;
+                       {nClrText,iif( oLIBCOMEDIT:oBrw:nArrayAt%2=0, oLIBCOMEDIT:nClrPane1, oLIBCOMEDIT:nClrPane2 ) } } 
+  oCol:aEditListTxt  :={"Nacional","Importada"}
+  oCol:aEditListBound:={"Nacional","Importada"}
+  oCol:nEditType     :=EDIT_LISTBOX
+  oCol:bOnPostEdit   :={|oCol,uValue,nKey|oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_COMORG,nKey,1)}
+
+
+  // Campo: LBC_NUMPAR
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_NUMPAR]
+  oCol:cHeader      :='Núm.'+CRLF+'Par-'+CRLF+"tida"
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 80
+
+
+  // Campo: LBC_ITEM
+  oCol:=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_ITEM]
+  oCol:cHeader      :='Núm.'+CRLF+'Item'
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oLIBCOMEDIT:oBrw:aArrayData ) } 
+  oCol:nWidth       := 80
+
+  oLIBCOMEDIT:oBrw:aCols[1]:cFooter:=" #"+LSTR(LEN(aData))
+
+  oLIBCOMEDIT:oBrw:bClrStd  := {|oBrw,nClrText,aLine|oBrw:=oLIBCOMEDIT:oBrw,aLine:=oBrw:aArrayData[oBrw:nArrayAt],;
+                                                 nClrText:=oLIBCOMEDIT:nClrText,;
+                                                 nClrText:=IF(aLine[oLIBCOMEDIT:COL_LBC_ITEM]<>STRZERO(1,5),oLIBCOMEDIT:nClrText1,nClrText),;
+                                                 nClrText:=IF(.F.,oLIBCOMEDIT:nClrText2,nClrText),;
+                                                 {nClrText,iif( oBrw:nArrayAt%2=0, oLIBCOMEDIT:nClrPane1, oLIBCOMEDIT:nClrPane2 ) } }
+
+  oLIBCOMEDIT:oBrw:bClrHeader          := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
+  oLIBCOMEDIT:oBrw:bClrFooter          := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
+
+  oLIBCOMEDIT:oBrw:bLDblClick:={|oBrw|oLIBCOMEDIT:RUNCLICK() }
+
+  oLIBCOMEDIT:oBrw:bChange:={||oLIBCOMEDIT:BRWCHANGE()}
+  oLIBCOMEDIT:oBrw:CreateFromCode()
+  oLIBCOMEDIT:oWnd:oClient := oLIBCOMEDIT:oBrw
+
+  // Copiar Edición de ColumnasColumnas
+
+  oLIBCOMEDIT:aEditType:={}
+
+  oLIBCOMEDIT:aFieldItemF:={"LBC_CODCTA","LBC_DESCRI","LBC_BASIMP","LBC_TIPIVA","LBC_PORIVA","LBC_MTOIVA","LBC_MTONET"}
+
+  // Posición de los campos que seran Editados en ITEM ADICIONAL
+  oLIBCOMEDIT:aFieldItemP:={}
+  AEVAL(oLIBCOMEDIT:aFieldItemF,{|a,n| AADD(oLIBCOMEDIT:aFieldItemP,oLIBCOMEDIT:LBCGETCOLPOS(a))})
+
+  AEVAL(oLIBCOMEDIT:oBrw:aCols,{|oCol,n| AADD(oLIBCOMEDIT:aEditType,oCol:nEditType)})
+
+
+  oLIBCOMEDIT:Activate({||oLIBCOMEDIT:ViewDatBar()})
+
+  oLIBCOMEDIT:BRWRESTOREPAR()
+
+  oLIBCOMEDIT:SETEDITTYPE(.T.)
+
+RETURN .T.
+
+/*
+// Barra de Botones
+*/
+FUNCTION ViewDatBar()
+   LOCAL oCursor,oBar,oBtn,oFont,oCol
+   LOCAL oDlg:=IF(oLIBCOMEDIT:lTmdi,oLIBCOMEDIT:oWnd,oLIBCOMEDIT:oDlg)
+   LOCAL nLin:=2,nCol:=0
+   LOCAL nWidth:=oLIBCOMEDIT:oBrw:nWidth()
+
+   oLIBCOMEDIT:oBrw:GoBottom(.T.)
+   oLIBCOMEDIT:oBrw:Refresh(.T.)
+
+//   IF !File("FORMS\BRLIBCOMEDIT.EDT")
+//     oLIBCOMEDIT:oBrw:Move(44,0,4318+50,460)
+//   ENDIF
+
+   DEFINE CURSOR oCursor HAND
+   DEFINE BUTTONBAR oBar SIZE 52-15,60-15 OF oDlg 3D CURSOR oCursor
+   DEFINE FONT oFont  NAME "Tahoma"   SIZE 0, -10 BOLD
+
+ // Emanager no Incluye consulta de Vinculos
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\XSAVE.BMP";
+          ACTION oLIBCOMEDIT:LIBCOMSAVE()
+
+   oBtn:cToolTip:="Guardar en Documentos del Proveedor"
+
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\XNEW.BMP";
+          ACTION oLIBCOMEDIT:LIBADDITEM()
+
+   oBtn:cToolTip:="Insertar nuevo Item en el mismo documento"
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\FORM.BMP";
+          ACTION oLIBCOMEDIT:CREARDOC()
+
+   oBtn:cToolTip:="Crear Documento"
+
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\seniat.BMP";
+          ACTION oLIBCOMEDIT:VALRIFSENIAT2()
+
+   oBtn:cToolTip:="Obtener datos del SENIAT"
+
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\ZOOM.BMP";
+          ACTION IF(oLIBCOMEDIT:oWnd:IsZoomed(),oLIBCOMEDIT:oWnd:Restore(),oLIBCOMEDIT:oWnd:Maximize())
+
+   oBtn:cToolTip:="Maximizar"
+
+
+/*
+   IF Empty(oLIBCOMEDIT:cServer) .AND. !Empty(SQLGET("DPBRWLNK","EBR_CODIGO","EBR_CODIGO"+GetWhere("=","LIBCOMEDIT")))
+*/
+
+   IF ISSQLFIND("DPBRWLNKCONCAT","BRC_CODIGO"+GetWhere("=","LIBCOMEDIT"))
+
+       DEFINE BUTTON oBtn;
+       OF oBar;
+       NOBORDER;
+       FONT oFont;
+       FILENAME "BITMAPS\XBROWSE.BMP";
+       ACTION EJECUTAR("BRWRUNBRWLINK",oLIBCOMEDIT:oBrw,"LIBCOMEDIT",oLIBCOMEDIT:cSql,oLIBCOMEDIT:nPeriodo,oLIBCOMEDIT:dDesde,oLIBCOMEDIT:dHasta,oLIBCOMEDIT)
+
+       oBtn:cToolTip:="Ejecutar Browse Vinculado(s)"
+       oLIBCOMEDIT:oBtnRun:=oBtn
+
+
+
+       oLIBCOMEDIT:oBrw:bLDblClick:={||EVAL(oLIBCOMEDIT:oBtnRun:bAction) }
+
+
+   ENDIF
+
+
+
+
+IF oLIBCOMEDIT:lBtnRun
+
+     DEFINE BUTTON oBtn;
+            OF oBar;
+            NOBORDER;
+            FONT oFont;
+            MENU EJECUTAR("BRBTNMENU",{"Opcion 1",;
+                                       "Opcion 2",;
+                                       "Opcion 3"},;
+                                       "oLIBCOMEDIT");
+            FILENAME "BITMAPS\RUN.BMP";
+            ACTION oLIBCOMEDIT:BTNRUN()
+
+      oBtn:cToolTip:="Opciones de Ejecucion"
+
+ENDIF
+
+IF oLIBCOMEDIT:lBtnColor
+
+     oLIBCOMEDIT:oBtnColor:=NIL
+
+     DEFINE BUTTON oBtn;
+            OF oBar;
+            NOBORDER;
+            FONT oFont;
+            FILENAME "BITMAPS\COLORS.BMP";
+            MENU EJECUTAR("BRBTNMENUCOLOR",oLIBCOMEDIT:oBrw,oLIBCOMEDIT,oLIBCOMEDIT:oBtnColor,{||EJECUTAR("BRWCAMPOSOPC",oLIBCOMEDIT,.T.)});
+            ACTION EJECUTAR("BRWSELCOLORFIELD",oLIBCOMEDIT,.T.)
+
+    oBtn:cToolTip:="Personalizar Colores en los Campos"
+
+    oLIBCOMEDIT:oBtnColor:=oBtn
+
+ENDIF
+
+
+
+IF oLIBCOMEDIT:lBtnSave
+
+      DEFINE BITMAP OF OUTLOOK oBRWMENURUN:oOut ;
+             BITMAP "BITMAPS\XSAVE.BMP";
+             PROMPT "Guardar Consulta";
+             ACTION EJECUTAR("DPBRWSAVE",oLIBCOMEDIT:oBrw,oLIBCOMEDIT:oFrm)
+ENDIF
+
+IF oLIBCOMEDIT:lBtnMenuBrw
+
+ DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\BRWMENU.BMP",NIL,"BITMAPS\BRWMENUG.BMP";
+          ACTION (EJECUTAR("BRWBUILDHEAD",oLIBCOMEDIT),;
+                  EJECUTAR("DPBRWMENURUN",oLIBCOMEDIT,oLIBCOMEDIT:oBrw,oLIBCOMEDIT:cBrwCod,oLIBCOMEDIT:cTitle,oLIBCOMEDIT:aHead));
+          WHEN !Empty(oLIBCOMEDIT:oBrw:aArrayData[1,1])
+
+   oBtn:cToolTip:="Menú de Opciones"
+
+ENDIF
+
+
+IF oLIBCOMEDIT:lBtnFind
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\XFIND.BMP";
+          ACTION EJECUTAR("BRWSETFIND",oLIBCOMEDIT:oBrw)
+
+   oBtn:cToolTip:="Buscar"
+ENDIF
+
+IF oLIBCOMEDIT:lBtnFilters
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\FILTRAR.BMP";
+          MENU EJECUTAR("BRBTNMENUFILTER",oLIBCOMEDIT:oBrw,oLIBCOMEDIT);
+          ACTION EJECUTAR("BRWSETFILTER",oLIBCOMEDIT:oBrw)
+
+   oBtn:cToolTip:="Filtrar Registros"
+ENDIF
+
+IF oLIBCOMEDIT:lBtnOptions
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\OPTIONS.BMP",NIL,"BITMAPS\OPTIONSG.BMP";
+          ACTION EJECUTAR("BRWSETOPTIONS",oLIBCOMEDIT:oBrw);
+          WHEN LEN(oLIBCOMEDIT:oBrw:aArrayData)>1
+
+   oBtn:cToolTip:="Filtrar según Valores Comunes"
+
+ENDIF
+
+IF oLIBCOMEDIT:lBtnRefresh
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\REFRESH.BMP";
+          ACTION oLIBCOMEDIT:BRWREFRESCAR()
+
+   oBtn:cToolTip:="Refrescar"
+
+ENDIF
+
+IF oLIBCOMEDIT:lBtnCrystal
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\CRYSTAL.BMP";
+          ACTION EJECUTAR("BRWTODBF",oLIBCOMEDIT)
+
+   oBtn:cToolTip:="Visualizar Mediante Crystal Report"
+
+ENDIF
+
+IF oLIBCOMEDIT:lBtnExcel
+
+
+     DEFINE BUTTON oBtn;
+            OF oBar;
+            NOBORDER;
+            FONT oFont;
+            FILENAME "BITMAPS\EXCEL.BMP";
+            ACTION (EJECUTAR("BRWTOEXCEL",oLIBCOMEDIT:oBrw,oLIBCOMEDIT:cTitle,oLIBCOMEDIT:cNombre))
+
+     oBtn:cToolTip:="Exportar hacia Excel"
+
+     oLIBCOMEDIT:oBtnXls:=oBtn
+
+ENDIF
+
+IF oLIBCOMEDIT:lBtnHtml
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\html.BMP";
+          ACTION (oLIBCOMEDIT:HTMLHEAD(),EJECUTAR("BRWTOHTML",oLIBCOMEDIT:oBrw,NIL,oLIBCOMEDIT:cTitle,oLIBCOMEDIT:aHead))
+
+   oBtn:cToolTip:="Generar Archivo html"
+
+   oLIBCOMEDIT:oBtnHtml:=oBtn
+
+ENDIF
+
+
+IF oLIBCOMEDIT:lBtnPreview
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\PREVIEW.BMP";
+          ACTION (EJECUTAR("BRWPREVIEW",oLIBCOMEDIT:oBrw))
+
+   oBtn:cToolTip:="Previsualización"
+
+   oLIBCOMEDIT:oBtnPreview:=oBtn
+
+ENDIF
+
+   IF ISSQLGET("DPREPORTES","REP_CODIGO","BRLIBCOMEDIT")
+
+     DEFINE BUTTON oBtn;
+            OF oBar;
+            NOBORDER;
+            FONT oFont;
+            FILENAME "BITMAPS\XPRINT.BMP";
+            ACTION oLIBCOMEDIT:IMPRIMIR()
+
+      oBtn:cToolTip:="Imprimir"
+
+     oLIBCOMEDIT:oBtnPrint:=oBtn
+
+   ENDIF
+
+IF oLIBCOMEDIT:lBtnQuery
+
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\QUERY.BMP";
+          ACTION oLIBCOMEDIT:BRWQUERY()
+
+   oBtn:cToolTip:="Imprimir"
+
+ENDIF
+
+
+
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\xTOP.BMP";
+          ACTION (oLIBCOMEDIT:oBrw:GoTop(),oLIBCOMEDIT:oBrw:Setfocus())
+
+IF nWidth>800 .OR. nWidth=0
+
+   IF oLIBCOMEDIT:lBtnPageDown
+
+     DEFINE BUTTON oBtn;
+            OF oBar;
+            NOBORDER;
+            FONT oFont;
+            FILENAME "BITMAPS\xSIG.BMP";
+            ACTION (oLIBCOMEDIT:oBrw:PageDown(),oLIBCOMEDIT:oBrw:Setfocus())
+  ENDIF
+
+  IF  oLIBCOMEDIT:lBtnPageUp
+
+    DEFINE BUTTON oBtn;
+           OF oBar;
+           NOBORDER;
+           FONT oFont;
+           FILENAME "BITMAPS\xANT.BMP";
+           ACTION (oLIBCOMEDIT:oBrw:PageUp(),oLIBCOMEDIT:oBrw:Setfocus())
+  ENDIF
+
+ENDIF
+
+  DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\xFIN.BMP";
+          ACTION (oLIBCOMEDIT:oBrw:GoBottom(),oLIBCOMEDIT:oBrw:Setfocus())
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\XSALIR.BMP";
+          ACTION oLIBCOMEDIT:Close()
+
+  oLIBCOMEDIT:oBrw:SetColor(0,oLIBCOMEDIT:nClrPane1)
+
+  oLIBCOMEDIT:SETBTNBAR(40,40,oBar)
+
+  EVAL(oLIBCOMEDIT:oBrw:bChange)
+
+  oBar:SetColor(CLR_BLACK,oDp:nGris)
+
+  AEVAL(oBar:aControls,{|o,n|o:SetColor(CLR_BLACK,oDp:nGris),nCol:=nCol+o:nWidth()})
+
+  nCol:=nCol+0
+
+  DEFINE FONT oFont  NAME "Tahoma"   SIZE 0, -12 BOLD
+
+  @ 1.5,nCol+32  SAY oSay PROMPT " Declarar " OF oBar;
+               SIZE 70,20 COLOR oDp:nClrLabelText,oDp:nClrLabelPane PIXEL FONT oFont BORDER RIGHT
+
+  @ 1.5,nCol+102 SAY oSay PROMPT " "+DTOC(oLIBCOMEDIT:dFchDec) OF oBar;
+               SIZE 90,20 COLOR oDp:nClrYellowText,oDp:nClrYellow PIXEL FONT oFont BORDER
+
+
+  @ 22,nCol+32  SAY oSay PROMPT " Pago " OF oBar;
+               SIZE 70,20 COLOR oDp:nClrLabelText,oDp:nClrLabelPane PIXEL FONT oFont BORDER RIGHT
+
+  @ 22,nCol+102 SAY oSay PROMPT " "+DTOC(oLIBCOMEDIT:dFchPag) OF oBar;
+               SIZE 90,20 COLOR oDp:nClrYellowText,oDp:nClrYellow PIXEL FONT oFont BORDER
+
+
+  oLIBCOMEDIT:oBar:=oBar
+
+// IF LEN(oLIBCOMEDIT:oBrw:aArrayData)>1
+  oLIBCOMEDIT:LIBCOMADDLINE()
+// ENDIF
+
+RETURN .T.
+
+/*
+// Evento para presionar CLICK
+*/
+FUNCTION RUNCLICK()
+
+
+RETURN .T.
+
+
+/*
+// Imprimir
+*/
+FUNCTION IMPRIMIR()
+  LOCAL oRep,cWhere
+
+  oRep:=REPORTE("BRLIBCOMEDIT",cWhere)
+  oRep:cSql  :=oLIBCOMEDIT:cSql
+  oRep:cTitle:=oLIBCOMEDIT:cTitle
+
+RETURN .T.
+
+FUNCTION LEEFECHAS()
+  LOCAL nPeriodo:=oLIBCOMEDIT:oPeriodo:nAt,cWhere
+
+  oLIBCOMEDIT:nPeriodo:=nPeriodo
+
+
+  IF oLIBCOMEDIT:oPeriodo:nAt=LEN(oLIBCOMEDIT:oPeriodo:aItems)
+
+     oLIBCOMEDIT:oDesde:ForWhen(.T.)
+     oLIBCOMEDIT:oHasta:ForWhen(.T.)
+     oLIBCOMEDIT:oBtn  :ForWhen(.T.)
+
+     DPFOCUS(oLIBCOMEDIT:oDesde)
+
+  ELSE
+
+     oLIBCOMEDIT:aFechas:=EJECUTAR("DPDIARIOGET",nPeriodo)
+
+     oLIBCOMEDIT:oDesde:VarPut(oLIBCOMEDIT:aFechas[1] , .T. )
+     oLIBCOMEDIT:oHasta:VarPut(oLIBCOMEDIT:aFechas[2] , .T. )
+
+     oLIBCOMEDIT:dDesde:=oLIBCOMEDIT:aFechas[1]
+     oLIBCOMEDIT:dHasta:=oLIBCOMEDIT:aFechas[2]
+
+     cWhere:=oLIBCOMEDIT:HACERWHERE(oLIBCOMEDIT:dDesde,oLIBCOMEDIT:dHasta,oLIBCOMEDIT:cWhere,.T.)
+
+     oLIBCOMEDIT:LEERDATA(cWhere,oLIBCOMEDIT:oBrw,oLIBCOMEDIT:cServer,oLIBCOMEDIT)
+
+  ENDIF
+
+  oLIBCOMEDIT:SAVEPERIODO()
+
+RETURN .T.
+
+
+FUNCTION HACERWHERE(dDesde,dHasta,cWhere_,lRun)
+   LOCAL cWhere:=""
+
+   DEFAULT lRun:=.F.
+
+   // Campo fecha no puede estar en la nueva clausula
+   IF ""$cWhere
+     RETURN ""
+   ENDIF
+
+   IF !Empty(dDesde)
+       
+   ELSE
+     IF !Empty(dHasta)
+       
+     ENDIF
+   ENDIF
+
+
+   IF !Empty(cWhere_)
+      cWhere:=cWhere + IIF( Empty(cWhere),""," AND ") +cWhere_
+   ENDIF
+
+   IF lRun
+
+     IF !Empty(oLIBCOMEDIT:cWhereQry)
+       cWhere:=cWhere + oLIBCOMEDIT:cWhereQry
+     ENDIF
+
+     oLIBCOMEDIT:LEERDATA(cWhere,oLIBCOMEDIT:oBrw,oLIBCOMEDIT:cServer,oLIBCOMEDIT)
+
+   ENDIF
+
+
+RETURN cWhere
+
+
+FUNCTION LEERDATA(cWhere,oBrw,cServer,oLIBCOMEDIT)
+   LOCAL aData:={},aTotal:={},oCol,cSql,aLines:={},oTable
+   LOCAL oDb,nLenLin
+   LOCAL nAt,nRowSel
+
+   DEFAULT cWhere:=""
+
+   IF !Empty(cServer)
+
+     IF !EJECUTAR("DPSERVERDBOPEN",cServer)
+        RETURN .F.
+     ENDIF
+
+     oDb:=oDp:oDb
+
+   ENDIF
+
+   cWhere:=IIF(Empty(cWhere),"",ALLTRIM(cWhere))
+
+   IF !Empty(cWhere) .AND. LEFT(cWhere,5)="WHERE"
+      cWhere:=SUBS(cWhere,6,LEN(cWhere))
+   ENDIF
+
+   cSql:= " SELECT "+;
+          " LBC_TIPDOC,"+;
+          " LBC_FECHA ,"+;
+          " LBC_RIF   ,"+;
+          " PRO_NOMBRE,"+;
+          " LBC_CODCTA,"+;
+          " CTA_DESCRI,"+;
+          " LBC_DESCRI,"+;
+          " LBC_NUMFAC,"+;
+          " LBC_NUMFIS,"+;
+          " LBC_FACAFE,"+;
+          " LBC_BASIMP,"+;
+          " LBC_TIPIVA,"+;
+          " LBC_PORIVA,"+;
+          " LBC_MTOIVA,"+;
+          " LBC_MTONET,"+;
+          " LBC_PORRTI,"+;
+          " LBC_MTORTI,"+;
+          " LBC_NUMRTI,"+;
+          " LBC_CONISR,"+;
+          " LBC_PORISR,"+;
+          " LBC_MTOISR,"+;
+          " LBC_USOCON,"+;
+          " LBC_COMORG,"+;
+          " LBC_NUMPAR,"+;
+          " LBC_ITEM"+;
+          " FROM DPLIBCOMPRASDET"+;
+          " LEFT  JOIN DPPROVEEDOR  ON LBC_RIF=PRO_RIF"+;
+          " LEFT  JOIN DPCTA        ON LBC_CODMOD=CTA_CODMOD AND LBC_CODCTA=CTA_CODIGO"+;
+          " ORDER BY CONCAT(LBC_NUMPAR,LBC_ITEM) "+;
+          ""
+
+/*
+   IF Empty(cWhere)
+     cSql:=STRTRAN(cSql,"<WHERE>","")
+   ELSE
+     cSql:=STRTRAN(cSql,"<WHERE>"," WHERE "+cWhere)
+   ENDIF
+*/
+   IF !Empty(cWhere)
+      cSql:=EJECUTAR("SQLINSERTWHERE",cSql,cWhere)
+   ENDIF
+
+   cSql:=EJECUTAR("WHERE_VAR",cSql)
+
+
+   oDp:lExcluye:=.T.
+
+   DPWRITE("TEMP\BRLIBCOMEDIT.SQL",cSql)
+
+   oTable     :=OpenTable(cSql,.T.)
+   aData      :=ACLONE(oTable:aDataFill)
+   oDp:aFields:=ACLONE(oTable:aFields)
+
+   oDp:cWhere:=cWhere
+
+   IF EMPTY(aData)
+      aData:=EJECUTAR("SQLARRAYEMPTY",cSql,oDb)
+//    AADD(aData,{CTOD(""),'','','','','','','','','','','','',0,0,0,0,0,0,0,'',0})
+   ENDIF
+
+// nLenLin:=LEN(aData[1])
+// IF Empty(aData[1,nLenLin])
+//    aData[1,nLenLin]:=STRZERO(1,5)
+// ENDIF
+
+
+   IF ValType(oBrw)="O"
+
+      oLIBCOMEDIT:cSql   :=cSql
+      oLIBCOMEDIT:cWhere_:=cWhere
+
+      aTotal:=ATOTALES(aData)
+
+      oBrw:aArrayData:=ACLONE(aData)
+      // oBrw:nArrayAt  :=1
+      // oBrw:nRowSel   :=1
+
+      // JN 15/03/2020 Sustituido por BRWCALTOTALES
+      EJECUTAR("BRWCALTOTALES",oBrw,.F.)
+
+      nAt    :=oBrw:nArrayAt
+      nRowSel:=oBrw:nRowSel
+
+      oBrw:Refresh(.F.)
+      oBrw:nArrayAt  :=MIN(nAt,LEN(aData))
+      oBrw:nRowSel   :=MIN(nRowSel,oBrw:nRowSel)
+      AEVAL(oLIBCOMEDIT:oBar:aControls,{|o,n| o:ForWhen(.T.)})
+
+      oLIBCOMEDIT:SAVEPERIODO()
+
+   ENDIF
+
+RETURN aData
+
+
+FUNCTION SAVEPERIODO()
+  LOCAL cFileMem:="USER\BRLIBCOMEDIT.MEM",V_nPeriodo:=oLIBCOMEDIT:nPeriodo
+  LOCAL V_dDesde:=oLIBCOMEDIT:dDesde
+  LOCAL V_dHasta:=oLIBCOMEDIT:dHasta
+
+  SAVE TO (cFileMem) ALL LIKE "V_*"
+
+RETURN .T.
+
+/*
+// Permite Crear Filtros para las Búquedas
+*/
+FUNCTION BRWQUERY()
+     EJECUTAR("BRWQUERY",oLIBCOMEDIT)
+RETURN .T.
+
+/*
+// Ejecución Cambio de Linea
+*/
+FUNCTION BRWCHANGE()
+  LOCAL cItem:=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_ITEM]
+
+  oLIBCOMEDIT:lSave:=.F.
+  oLIBCOMEDIT:LIBREFRESHFIELD() // Refresca los Campos
+
+  IF Empty(oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_TIPDOC])
+    oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_TIPDOC]:="FAC"
+  ENDIF
+
+  IF Empty(oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_TIPIVA])
+    oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_TIPIVA]:="GN"
+  ENDIF
+
+  IF Empty(oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_COMORG])
+    oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_COMORG]:="Nacional"
+  ENDIF
+
+  AEVAL(oLIBCOMEDIT:oBrw:aCols,{|oCol,n|oCol:lButton:=.F.})
+
+  IF oLIBCOMEDIT:cItemChange<>cItem
+    oLIBCOMEDIT:SETEDITTYPE(cItem=STRZERO(1,5))
+  ENDIF
+
+  oLIBCOMEDIT:cItemChange:=cItem
+
+RETURN NIL
+
+/*
+// Refrescar Browse
+*/
+FUNCTION BRWREFRESCAR()
+    LOCAL cWhere
+
+
+    IF Type("oLIBCOMEDIT")="O" .AND. oLIBCOMEDIT:oWnd:hWnd>0
+
+      cWhere:=" "+IIF(!Empty(oLIBCOMEDIT:cWhere_),oLIBCOMEDIT:cWhere_,oLIBCOMEDIT:cWhere)
+      cWhere:=STRTRAN(cWhere," WHERE ","")
+
+      oLIBCOMEDIT:LEERDATA(oLIBCOMEDIT:cWhere_,oLIBCOMEDIT:oBrw,oLIBCOMEDIT:cServer)
+      oLIBCOMEDIT:oWnd:Show()
+      oLIBCOMEDIT:oWnd:Restore()
+
+    ENDIF
+
+RETURN NIL
+
+FUNCTION BTNRUN()
+    ? "PERSONALIZA FUNCTION DE BTNRUN"
+RETURN .T.
+
+FUNCTION BTNMENU(nOption,cOption)
+
+   ? nOption,cOption,"PESONALIZA LAS SUB-OPCIONES"
+
+   IF nOption=1
+   ENDIF
+
+   IF nOption=2
+   ENDIF
+
+   IF nOption=3
+   ENDIF
+
+RETURN .T.
+
+FUNCTION HTMLHEAD()
+
+   oLIBCOMEDIT:aHead:=EJECUTAR("HTMLHEAD",oLIBCOMEDIT)
+
+// Ejemplo para Agregar mas Parámetros
+//   AADD(oDOCPROISLR:aHead,{"Consulta",oDOCPROISLR:oWnd:cTitle})
+
+RETURN
+
+// Restaurar Parametros
+FUNCTION BRWRESTOREPAR()
+  EJECUTAR("BRWRESTOREPAR",oLIBCOMEDIT)
+RETURN .T.
+
+FUNCTION EDITCTA(nCol,lSave)
+   LOCAL oBrw  :=oLIBCOMEDIT:oBrw,oLbx
+   LOCAL nAt   :=oBrw:nArrayAt
+   LOCAL uValue:=oBrw:aArrayData[oBrw:nArrayAt,nCol]
+
+   IF oDp:lCondominio
+     oLbx:=DPLBX("CNDDPCTA.LBX","Cuentas con Planificación, Periodo "+DTOC(oDp:dFchInicio)+"-"+DTOC(oDp:dFchCierre),GetWhereAnd("PLP_FECHA",oDp:dFchInicio,oDp:dFchCierre))
+   ELSE
+     oLbx:=DpLbx("DPCTAUTILIZACION.LBX",NIL,"CTA_CODMOD"+GetWhere("=",oDp:cCtaMod))
+   ENDIF
+
+   oLbx:GetValue("CTA_CODIGO",oBrw:aCols[nCol],,,uValue)
+   oLIBCOMEDIT:lAcction  :=.T.
+   oBrw:nArrayAt:=nAt
+
+   SysRefresh(.t.)
+
+
+RETURN uValue
+
+FUNCTION VALCTA(oCol,uValue,nCol,nKey)
+ LOCAL cTipDoc,oTable,cWhere:="",cCtaOld:="",cDescri,aLine:={},cWhere
+ LOCAL cDescri:=aLine[oLIBCOMEDIT:COL_CTA_DESCRI]
+
+ DEFAULT nKey:=0
+
+ DEFAULT oCol:lButton:=.F.
+
+ IF oCol:lButton=.T.
+// oCol:oBrw:nColSel:=nCol+2
+   oCol:lButton:=.F.
+   RETURN .T.
+ ENDIF
+
+ IF !SQLGET("DPCTA","CTA_CODIGO,CTA_DESCRI","CTA_CODIGO"+GetWhere("=",uValue))==uValue
+    MensajeErr("Cuenta Contable no Existe")
+    EVAL(oCol:bEditBlock)  
+    RETURN .F.
+ ENDIF
+
+ cDescri:=oDp:aRow[2]
+
+ IF !EJECUTAR("ISCTADET",uValue,.T.)
+    EVAL(oCol:bEditBlock)  
+    RETURN .F.
+ ENDIF
+
+// oLIBCOMEDIT:cCodigo := oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,1]
+ oLIBCOMEDIT:lAcction:=.F.
+
+ // Descripción debe obtenerla desde planificación
+ // ? cDescri
+
+ oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_CODCTA]:=uValue
+ oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_CTA_DESCRI]:=cDescri
+
+ oLIBCOMEDIT:LIBSAVEFIELD(oLIBCOMEDIT:COL_LBC_CODCTA)
+
+ oCol:oBrw:nColSel:=oLIBCOMEDIT:COL_LBC_DESCRI
+// nCol+2 OJO
+ oCol:oBrw:DrawLine(.T.)
+
+RETURN .T.
+
+FUNCTION EDITRIF(nCol,lSave)
+   LOCAL oBrw  :=oLIBCOMEDIT:oBrw,oLbx
+   LOCAL nAt   :=oBrw:nArrayAt
+   LOCAL aLine :=oBrw:aArrayData[oBrw:nArrayAt]
+   LOCAL uValue:=oBrw:aArrayData[oBrw:nArrayAt,nCol]
+   LOCAL cWhere:=""
+
+   IF !Empty(aLine[nCol])
+
+      cWhere:="PRO_RIF"+GetWhere(" LIKE ","%"+ALLTRIM(aLine[nCol])+"%")
+         
+      // no hay RIF con estos datos y proceso a Incluirlo
+      IF COUNT("DPPROVEEDOR",cWhere)=0
+        oBrw:nColSel:=oLIBCOMEDIT:LBCGETCOLPOS("PRO_NOMBRE")
+        RETURN .T.
+      ENDIF
+
+   ENDIF
+
+   IF COUNT("DPPROVEEDOR")=0
+      oLIBCOMEDIT:VALRIFSENIAT()
+      RETURN .F.
+   ENDIF
+
+   oLbx:=DpLbx("DPPROVEEDOR_RIF.LBX",NIL,oLIBCOMEDIT:cWherePro+IF(Empty(cWhere),""," AND "+cWhere))
+   oLbx:GetValue("PRO_RIF",oBrw:aCols[nCol],,,uValue)
+   oLIBCOMEDIT:lAcction  :=.T.
+   oBrw:nArrayAt:=nAt
+
+   SysRefresh(.t.)
+
+RETURN uValue
+
+/*
+// Validar RIF DEL SENIAT
+*/
+FUNCTION VALRIFSENIAT2()
+  LOCAL uValue :=oLIBCOMEDIT:LBCGETCOLVALUE("LBC_RIF")
+  LOCAL oCol   :=oLIBCOMEDIT:LBCGETCOLBRW("LBC_RIF")
+  LOCAL nCol   :=oLIBCOMEDIT:LBCGETCOLPOS("LBC_RIF")
+  LOCAL lOk ,nKey:=NIL
+  LOCAL oDb    :=OpenOdbc(oDp:cDsnData),cSql
+
+  oDp:aRif:={}
+  lOk:=EJECUTAR("VALRIFSENIAT",uValue,!ISDIGIT(uValue),ISDIGIT(uValue)) 
+
+  IF lOk
+
+    IF LEN(oDp:aRif)>1 .AND. !("NO ENCON"$oDp:aRif[1] .OR. "NO EXIS"$UPPER(oDp:aRif[1]))
+
+      cSql:=" SET FOREIGN_KEY_CHECKS = 0"
+      oDb:Execute(cSql)
+
+      EJECUTAR("CREATERECORD","DPPROVEEDOR",{"PRO_RIF" ,"PRO_NOMBRE","PRO_RETIVA"      ,"PRO_ESTADO","PRO_TIPO" },;
+                                             {uValue   ,oDp:aRif[1] ,VAL(oDp:aRif[2])  ,"Activo"    ,"Proveedor"},;
+                                              NIL,.T.,"PRO_RIF"+GetWhere("=",uValue))
+
+      cSql:=" SET FOREIGN_KEY_CHECKS = 1"
+      oDb:Execute(cSql)
+
+    ENDIF
+
+    oLIBCOMEDIT:VALRIF(oCol,uValue,nCol,nKey)
+
+
+  ENDIF
+
+RETURN .T.
+
+FUNCTION VALRIF(oCol,uValue,nCol,nKey)
+  LOCAL cTipDoc,oTable,cCtaOld:="",cDescri,aLine:={},cWhere,lOk:=.F.
+  LOCAL oRif,cCodCta:="",cNomCta:="",nPorIva,cTipIva,nPorRti,cCodigo
+  LOCAL cWhere    :=oLIBCOMEDIT:LIBWHERE()
+  LOCAL nColPorRti:=oLIBCOMEDIT:LBCGETCOLPOS("LBC_PORRTI")
+  LOCAL nColTipIva:=oLIBCOMEDIT:LBCGETCOLPOS("LBC_TIPIVA")
+  LOCAL nColDescri:=oLIBCOMEDIT:LBCGETCOLPOS("LBC_DESCRI")
+
+// ,nCOLRTIVA:=oLIBCOMEDIT:COL_PRO_NOMBRE
+
+  DEFAULT nKey:=0
+
+  DEFAULT oCol:lButton:=.F.
+
+  IF oCol:lButton=.T.
+     oCol:lButton:=.F.
+     RETURN .T.
+  ENDIF
+
+  oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol  ]:=uValue
+
+  IF !UPPER(ALLTRIM(SQLGET("DPPROVEEDOR","PRO_RIF","PRO_RIF"+GetWhere("=",uValue))))==UPPER(ALLTRIM(uValue))
+
+    oDp:aRif:={}
+
+    IF LEN(uValue)>=10 .AND. oDp:lAutRif
+      lOk:=EJECUTAR("VALRIFSENIAT",uValue,!ISDIGIT(uValue),ISDIGIT(uValue)) 
+    ENDIF
+
+    IF lOk .AND. LEN(oDp:aRif)>1 .AND. !("NO ENCON"$oDp:aRif[1] .OR. "NO EXIS"$UPPER(oDp:aRif[1]))
+
+       cCodigo:=uValue
+
+       EJECUTAR("CREATERECORD","DPPROVEEDOR",{"PRO_CODIGO","PRO_RIF" ,"PRO_NOMBRE","PRO_RETIVA"      ,"PRO_ACTIVO","PRO_TIPO" },;
+                                             {cCodigo     ,uValue    ,oDp:aRif[1] ,VAL(oDp:aRif[2])  ,"Activo"    ,"Ocasional"},;
+                                              NIL,.T.,"PRO_RIF"+GetWhere("=",uValue))
+
+   ELSE
+
+      EVAL(oCol:bEditBlock)  
+      RETURN .F.
+
+    ENDIF
+
+ ENDIF
+ 
+ cCodCta:=oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_CODCTA]
+ cNomCta:=oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_CTA_DESCRI]
+
+ IF Empty(cCodCta)
+
+   cCodCta:=SQLGET("dplibcomprasdet","LBC_CODCTA,LBC_TIPIVA,LBC_PORRTI,LBC_DESCRI","LBC_RIF"+GetWhere("=",uValue)+" AND LBC_CODCTA"+GetWhere("<>","")+" ORDER BY LBC_FECHA DESC LIMIT 1 ")
+   cTipIva:=DPSQLROW(2)
+   nPorRti:=DPSQLROW(3)
+   cDescri:=PADR(DPSQLROW(4),140)
+
+   oLIBCOMEDIT:LIBSAVEFIELD(oLIBCOMEDIT:COL_LBC_COMORG)
+
+   oLIBCOMEDIT:oBrw:aArrayData[oCol:oBrw:nArrayAt,nColTipIva]:=cTipIva
+   oLIBCOMEDIT:oBrw:aArrayData[oCol:oBrw:nArrayAt,nColPorRti]:=nPorRti
+   oLIBCOMEDIT:oBrw:aArrayData[oCol:oBrw:nArrayAt,nColDescri]:=cDescri
+
+
+   cNomCta:=SQLGET("DPCTA","CTA_DESCRI","CTA_CODMOD"+GetWhere("=",oDp:cCtaMod)+" AND CTA_CODIGO"+GetWhere("=",cCodCta))
+
+   IF !Empty(cCodCta)
+     SQLUPDATE("DPLIBCOMPRASDET","LBC_CODCTA",cCodCta,cWhere)
+   ENDIF
+
+ ENDIF
+	
+ cDescri:=SQLGET("DPPROVEEDOR","PRO_NOMBRE,PRO_RETIVA","PRO_RIF"+GetWhere("=",uValue))
+ nPorIva:=DPSQLROW(2)
+ oLIBCOMEDIT:cRif    := oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol]
+ oLIBCOMEDIT:lAcction:=.F.
+
+ oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol  ]:=uValue
+ oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol+1]:=cDescri
+
+ oLIBCOMEDIT:LIBSAVEFIELD(nCol)
+
+ // Cuenta Contable
+ oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_CODCTA]:=cCodCta
+ oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_CTA_DESCRI]:=cNomCta
+ oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_COMORG]:="Nacional"
+
+  oLIBCOMEDIT:LIBSAVEFIELD(oLIBCOMEDIT:COL_LBC_COMORG)
+
+// IF Empty(cDescri)
+//   oCol:oBrw:nColSel:=nCol+1
+// ENDIF
+
+ IF !Empty(cCodCta)
+   oCol:oBrw:nColSel:=oLIBCOMEDIT:COL_LBC_DESCRI
+ ELSE
+   oCol:oBrw:nColSel:=oLIBCOMEDIT:COL_LBC_CODCTA
+ ENDIF
+
+ oCol:oBrw:DrawLine(.T.)
+
+RETURN .T.
+
+/*
+// Validar Número de Factura
+*/
+FUNCTION VALNUMFAC(oCol,uValue,nCol,nKey)
+  LOCAL cWhere :=oLIBCOMEDIT:LIBWHERE()
+  LOCAL aLine  :=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt]
+  LOCAL nLen   :=LEN(aLine)
+  LOCAL cWhere :="LBC_CODSUC"+GetWhere("=",oLIBCOMEDIT:cCodSuc)+" AND LBC_FCHDEC"+GetWhere("=",oLIBCOMEDIT:dFchDec)+" AND LBC_ITEM"+GetWhere("<>",aLine[nLen])
+  LOCAL dFchFin:=SQLGET("DPLIBCOMPRASDET","LBC_FCHDEC,LBC_ITEM",cWhere+" AND LBC_NUMFAC"+GetWhere("=",uValue)+" AND LBC_RIF"+GetWhere("=",oLIBCOMEDIT:LBC_RIF))
+  LOCAL cItem  :=DPSQLROW(2),nAt
+
+  oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,nCol,nKey)
+  nAt:=oLIBCOMEDIT:LBCGETCOLPOS("LBC_NUMFIS")
+
+  IF nAt>0
+    oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nAt]:=uValue
+    oCol:oBrw:nColSel:=nAt
+  ENDIF
+
+RETURN .T.
+
+FUNCTION PUTDESCRI(oCol,uValue,nCol)
+
+  oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol  ]:=uValue
+  oCol:oBrw:DrawLine(.T.)
+  oLIBCOMEDIT:LIBSAVEFIELD(nCol)
+
+  oCol:oBrw:nColSel:=nCol+1
+
+RETURN .T.
+
+FUNCTION PUTFECHA(oCol,uValue,nCol)
+
+  oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol  ]:=uValue
+  oCol:oBrw:DrawLine(.T.)
+  oLIBCOMEDIT:LIBSAVEFIELD(nCol)
+
+  oCol:oBrw:nColSel:=nCol+1
+
+RETURN .T.
+
+
+FUNCTION PUTTIPDOC(oCol,uValue,nCol)
+  
+  oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol  ]:=uValue
+  oCol:oBrw:DrawLine(.T.)
+  oLIBCOMEDIT:LIBSAVEFIELD(nCol)
+
+  IF uValue="FAC"
+    // Inactiva FACTURA AFECTADA
+    oCol:oBrw:aCols[oLIBCOMEDIT:COL_LBC_FACAFE]:nEditType:=0
+  ELSE
+    oCol:oBrw:aCols[oLIBCOMEDIT:COL_LBC_FACAFE]:nEditType:=1
+  ENDIF
+
+  oCol:oBrw:nColSel:=nCol+1
+
+RETURN .T.
+
+/*
+// Busca la Columna 
+*/
+FUNCTION LBCGETCOLVALUE(cField)
+   LOCAL nAt   :=ASCAN(oLIBCOMEDIT:aFields,{|a,n|a[1]==cField})
+   LOCAL aLine :=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt]
+   LOCAL uValue:=IF(nAt>0,aLine[nAt],NIL)
+
+RETURN uValue
+
+/*
+// Busca Posición de la Columna 
+*/
+FUNCTION LBCGETCOLPOS(cField)
+   LOCAL nAt   :=ASCAN(oLIBCOMEDIT:aFields,{|a,n|a[1]==cField})
+RETURN nAt
+
+/*
+// Busca Posición de la Columna 
+*/
+FUNCTION LBCGETCOLBRW(cField)
+   LOCAL nAt   :=ASCAN(oLIBCOMEDIT:aFields,{|a,n|a[1]==cField})
+RETURN IF(nAt>0,oLIBCOMEDIT:oBrw:aCols[nAt],NIL)
+
+
+/*
+// GUARDAR VALOR EN EL CAMPO
+*/
+FUNCTION PUTFIELDVALUE(oCol,uValue,nCol,nKey,nLen,lNext)
+   LOCAL cField,aLine
+   LOCAL cWhere:=oLIBCOMEDIT:LIBWHERE()
+
+   DEFAULT nCol  :=oCol:nPos,;
+           lNext :=.F.
+
+   cField:=oLIBCOMEDIT:aFields[nCol,1]
+   oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol  ]:=uValue
+   aLine :=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt]
+
+   IF nLen<>NIL .AND. ValType(uValue)="C"   
+      uValue:=LEFT(uValue,nLen)
+   ENDIF
+
+   SQLUPDATE("DPLIBCOMPRASDET",cField,uValue,cWhere)
+
+   // cada columna representa un campo y asigna el valor dinámico en el formulario
+   oLIBCOMEDIT:LIBREFRESHFIELD()
+
+   IF lNext
+      oLIBCOMEDIT:oBrw:nColSel:=nCol+1
+   ENDIF
+
+RETURN .T.
+
+FUNCTION LIBREFRESHFIELD(nAt)
+  LOCAL aLine
+
+  DEFAULT nAt:=oLIBCOMEDIT:oBrw:nArrayAt
+
+  aLine :=oLIBCOMEDIT:oBrw:aArrayData[nAt]
+
+  AEVAL(oLIBCOMEDIT:aFields,{|a,n| oLIBCOMEDIT:SET(a[1],aLine[n])})
+
+RETURN .T.
+
+FUNCTION LIBSAVEFIELD(nCol)
+  LOCAL cWhere:=oLIBCOMEDIT:LIBWHERE()
+  LOCAL cField:=oLIBCOMEDIT:aFields[nCol,1]
+  LOCAL uValue:=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,nCol]
+
+  IF !oLIBCOMEDIT:lSave .AND. COUNT("DPLIBCOMPRASDET",cWhere)=0
+    oLIBCOMEDIT:LIBCOMGRABAR()
+  ENDIF
+
+  SQLUPDATE("DPLIBCOMPRASDET",cField,uValue,cWhere)
+  oLIBCOMEDIT:LIBREFRESHFIELD() // Refresca los Campos
+
+RETURN .T.
+
+FUNCTION LIBWHERE()
+   LOCAL aLine   :=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt]
+   LOCAL nColItem:=oLIBCOMEDIT:LBCGETCOLPOS("LBC_ITEM")
+   LOCAL nColNumP:=oLIBCOMEDIT:LBCGETCOLPOS("LBC_NUMPAR")
+   LOCAL cWhere  :="LBC_CODSUC"+GetWhere("=",oLIBCOMEDIT:cCodSuc)+" AND "+;
+                   "LBC_FCHDEC"+GetWhere("=",oLIBCOMEDIT:dFchDec)+" AND "+;
+                   "LBC_NUMPAR"+GetWhere("=",aLine[nColNumP]    )+" AND "+;
+                   "LBC_ITEM"  +GetWhere("=",aLine[nColItem]    )
+  
+RETURN cWhere
+
+
+FUNCTION LIBCOMGRABAR()
+   LOCAL aLine :=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt]
+   LOCAL cWhere:=oLIBCOMEDIT:LIBWHERE(),I,aFields:={},aValues:={}
+   LOCAL nAt   :=oLIBCOMEDIT:oBrw:nArrayAt
+
+   oLIBCOMEDIT:lSave:=.T.
+
+   FOR I=1 TO LEN(oLIBCOMEDIT:aFields)
+   
+     IF LEFT(oLIBCOMEDIT:aFields[I,1],4)="LBC_"
+        AADD(aFields,oLIBCOMEDIT:aFields[I,1])
+        AADD(aValues,aLine[I])
+     ENDIF
+
+   NEXT I
+
+   AADD(aFields,"LBC_CODMOD")
+   AADD(aFields,"LBC_FCHDEC")
+   AADD(aFields,"LBC_CODSUC")
+
+   AADD(aValues,oDp:cCtaMod)
+   AADD(aValues,oLIBCOMEDIT:dFchDec)
+   AADD(aValues,oLIBCOMEDIT:cCodSuc)
+
+   IF COUNT("DPLIBCOMPRASDET",cWhere)=0
+     EJECUTAR("CREATERECORD","DPLIBCOMPRASDET",aFields,aValues,NIL,.T.,cWhere)
+     oLIBCOMEDIT:LIBCOMADDLINE()
+     oLIBCOMEDIT:oBrw:nArrayAt:=nAt
+   ENDIF
+
+RETURN .T.
+
+/*
+// Agregar Linea
+*/
+FUNCTION LIBCOMADDLINE(lItem)
+  LOCAL nColItem:=oLIBCOMEDIT:LBCGETCOLPOS("LBC_ITEM")
+  LOCAL nColNumP:=oLIBCOMEDIT:LBCGETCOLPOS("LBC_NUMPAR")
+  LOCAL cMaxNumP:=STRZERO(0,5)
+  LOCAL cMaxItem:=""
+  LOCAL aLine   :=ACLONE(oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt])
+  LOCAL cItem   :=STRZERO(1,5)
+  LOCAL nItems  :=0,nAt
+
+  DEFAULT lItem:=.F.
+
+  IF !lItem
+
+    // no suma el item
+    AEVAL(oLIBCOMEDIT:oBrw:aArrayData,{|a,n| cMaxNumP:=IF(a[nColNumP]>cMaxNumP,a[nColNumP],cMaxNumP)})
+    cMaxNumP:=STRZERO(VAL(cMaxNumP)+1,5)
+  
+  ELSE
+
+    // Incrementa de Items en la misma partida
+    cMaxNumP:=aLine[nColNumP]
+    AEVAL(oLIBCOMEDIT:oBrw:aArrayData,{|a,n| nItems:=nItems+IF(a[nColNumP]=cMaxNumP,1,0)})
+    cItem:=STRZERO(nItems+1,5)
+    
+  ENDIF
+
+  AEVAL(aLine,{|a,n| aLine[n]:=CTOEMPTY(a)})
+
+  aLine[nColItem]:=cItem
+  aLine[nColNumP]:=cMaxNumP
+
+  IF !lItem
+    AADD(oLIBCOMEDIT:oBrw:aArrayData,ACLONE(aLine))
+  ELSE
+    nAt:=oLIBCOMEDIT:oBrw:nArrayAt+1
+    AINSERTAR(oLIBCOMEDIT:oBrw:aArrayData,nAt,ACLONE(aLine))
+    oLIBCOMEDIT:oBrw:nArrayAt:=nAt
+    oLIBCOMEDIT:oBrw:nRowSel:=oLIBCOMEDIT:oBrw:nRowSel+1
+  ENDIF
+
+  oLIBCOMEDIT:oBrw:Refresh(.F.)
+
+RETURN .T.
+
+/*
+// Ejecuta Guardar y Convertir en Documentos del Proveedor
+*/
+FUNCTION LIBCOMSAVE()
+
+   EJECUTAR("DPLIBCOMTODPDOCPRO",oLIBCOMEDIT:cCodSuc,oLIBCOMEDIT:dFchDec)
+
+RETURN .T.
+
+FUNCTION VALRIFNOMBRE(oCol,uValue,nCol)
+ LOCAL cRif   :=oLIBCOMEDIT:LBCGETCOLVALUE("LBC_RIF")
+ LOCAL cCodigo:=uValue
+
+ oLIBCOMEDIT:LIBREFRESHFIELD() // Refresca los Campos
+   cCodigo:=uValue // Codigo del Proveedor
+ EJECUTAR("CREATERECORD","DPPROVEEDOR",{"PRO_CODIGO","PRO_RIF"           ,"PRO_NOMBRE","PRO_RETIVA"          ,"PRO_ESTADO","PRO_TIPO" },;
+                                       {cCodigo,    oLIBCOMEDIT:LBC_RIF,uValue      ,oLIBCOMEDIT:LBC_PORRTI,.T.   ,"Activo"    ,"Ocasional"},;
+            NIL,.T.,"PRO_RIF"+GetWhere("=",oLIBCOMEDIT:LBC_RIF))
+
+ oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,nCol  ]:=uValue
+ oCol:oBrw:DrawLine(.T.)
+ oCol:oBrw:nColSel:=nCol+1
+
+RETURN .T.
+
+FUNCTION PUTTIPIVA(oCol,cTipIva,nCol)
+   LOCAL nPorIva   :=oLIBCOMEDIT:GETPORIVA(cTipIva)
+   LOCAL nMonto    :=oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_BASIMP]
+   LOCAL nMtoIva   :=PORCEN(nMonto,nPorIva)
+   LOCAL oColPorRti:=oLIBCOMEDIT:LBCGETCOLBRW("LBC_PORRTI")
+   LOCAL nPorRti   :=oLIBCOMEDIT:LBCGETCOLVALUE("LBC_PORRTI")
+
+   oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_TIPIVA]:=cTipIva
+   oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_PORIVA]:=nPorIva
+   oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_MTOIVA]:=nMtoIva
+   oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_MTONET]:=nMonto+nMtoIva
+
+   oLIBCOMEDIT:LIBSAVEFIELD(oLIBCOMEDIT:COL_LBC_TIPIVA)
+   oLIBCOMEDIT:LIBSAVEFIELD(oLIBCOMEDIT:COL_LBC_PORIVA)
+   oLIBCOMEDIT:LIBSAVEFIELD(oLIBCOMEDIT:COL_LBC_MTOIVA)
+   oLIBCOMEDIT:LIBSAVEFIELD(oLIBCOMEDIT:COL_LBC_MTONET)
+
+   oLIBCOMEDIT:VALPORRTI(oColPorRti,nPorRti,oLIBCOMEDIT:COL_LBC_PORRTI,NIL)
+
+RETURN .T.
+
+/*
+// Valida % RETENCION DE IVA
+*/
+FUNCTION VALPORRTI(oCol,uValue,oLIBCOMEDIT:COL_LBC_PORRTI,nKey)
+   LOCAL nMtoIva:=oLIBCOMEDIT:LBCGETCOLVALUE("LBC_MTOIVA")
+   LOCAL nMtoRti:=PORCEN(nMtoIva,uValue)
+   LOCAL cRif   :=oLIBCOMEDIT:LBCGETCOLVALUE("LBC_RIF")
+
+   oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_MTORTI]:=nMtoRti
+
+   oLIBCOMEDIT:LIBSAVEFIELD(oLIBCOMEDIT:COL_LBC_MTORTI)
+   oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_PORRTI,nKey)
+
+   SQLUPDATE("DPPROVEEDOR","PRO_RETIVA",uValue,"PRO_RIF"+GetWhere("=",cRif))
+
+RETURN .T.
+
+/*
+// Valida % RETENCION DE ISLR
+*/
+FUNCTION VALPORISR(oCol,uValue,oLIBCOMEDIT:COL_LBC_PORISR,nKey)
+   LOCAL nMtoBas:=oLIBCOMEDIT:LBCGETCOLVALUE("LBC_MTOBAS")
+   LOCAL nMtoIsr:=PORCEN(nMtoBas,uValue)
+
+   oCol:oBrw:aArrayData[oCol:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_MTOISR]:=nMtoRti
+
+   oLIBCOMEDIT:LIBSAVEFIELD(oLIBCOMEDIT:COL_LBC_MTOISR)
+   oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_PORISR,nKey)
+
+RETURN .T.
+
+
+FUNCTION GETPORIVA(cTipIva)
+  LOCAL nPorIva:=0
+  LOCAL nCol  :=IIF("N"="N",3,5)
+
+  nPorIva:=EJECUTAR("IVACAL",cTipIva,nCol,oLIBCOMEDIT:dFchDec) 
+
+RETURN nPorIva
+
+/*
+// Valida base imponible
+*/
+
+FUNCTION VALLBCBASIMP(oCol,uValue,oLIBCOMEDIT:COL_LBC_BASIMP,nKey)
+  LOCAL cTipIva:=oLIBCOMEDIT:LBCGETCOLVALUE("LBC_TIPIVA")
+  LOCAL nPorIva:=oLIBCOMEDIT:GETPORIVA(cTipIva)
+  LOCAL oColIva:=oLIBCOMEDIT:LBCGETCOLBRW("LBC_TIPIVA")
+  LOCAL oColPor:=oLIBCOMEDIT:LBCGETCOLBRW("LBC_PORIVA")
+  LOCAL nColIva:=oLIBCOMEDIT:LBCGETCOLPOS("LBC_TIPIVA")
+
+  oLIBCOMEDIT:PUTFIELDVALUE(oCol,uValue,oLIBCOMEDIT:COL_LBC_BASIMP,nKey)
+
+  IF nPorIva>0
+     oLIBCOMEDIT:PUTTIPIVA(oColIva,cTipIva,nColIva)
+  ENDIF
+
+RETURN .T.
+
+/*
+// Activar o Inactivar Editar Columnas
+*/
+FUNCTION SETEDITTYPE(lOn)
+
+  IF lOn
+    // Activa la Edición de las columnas
+    AEVAL(oLIBCOMEDIT:aEditType,{|nEditType,n| oLIBCOMEDIT:oBrw:aCols[n]:nEditType:=nEditType} )
+  ELSE
+
+    // Desactiva 
+    AEVAL(oLIBCOMEDIT:aEditType,{|nEditType,n| oLIBCOMEDIT:oBrw:aCols[n]:nEditType:=0} )
+
+    // Activa solo las columnas editables para agregar nuevas cuentas e Items
+    // ViewArray(oLIBCOMEDIT:aFieldItemP)
+    AEVAL(oLIBCOMEDIT:aFieldItemP,{|nAt,n,nEditType| nEditType:=oLIBCOMEDIT:aEditType[nAt],;
+                                                     oLIBCOMEDIT:oBrw:aCols[nAt]:nEditType:=nEditType})
+
+  ENDIF
+
+RETURN .T.
+/*
+// Insertar Linea
+*/
+FUNCTION LIBADDITEM()
+
+   oLIBCOMEDIT:LIBCOMADDLINE(.T.)
+   oLIBCOMEDIT:SETEDITTYPE(.F.)
+
+   oLIBCOMEDIT:oBrw:nColSel:=oLIBCOMEDIT:aFieldItemP[1]
+
+RETURN .T.
+
+/*
+// CREAR DOCUMENTO 
+*/
+FUNCTION CREARDOC()
+    LOCAL cWhere
+
+    cWhere:="LBC_CODSUC"+GetWhere("=" ,oLIBCOMEDIT:cCodSuc   )+" AND "+;
+            "LBC_NUMFAC"+GetWhere("=" ,oLIBCOMEDIT:LBC_NUMFAC)+" AND "+;
+            "LBC_TIPDOC"+GetWhere("=" ,oLIBCOMEDIT:LBC_TIPDOC)+" AND "+;
+            "LBC_RIF   "+GetWhere("=" ,oLIBCOMEDIT:LBC_RIF   )
+
+   EJECUTAR("DPLIBCOMTODPDOCPRO",oLIBCOMEDIT:cCodSuc,oLIBCOMEDIT:dFchDec,cWhere)
+
+   EJECUTAR("VERDOCPRO",oLIBCOMEDIT:cCodSuc,oLIBCOMEDIT:LBC_TIPDOC,oLIBCOMEDIT:LBC_RIF,oLIBCOMEDIT:LBC_NUMFAC,"D")
+
+RETURN .T.
+
+/*
+// Calcula la Base Imponible
+*/
+
+FUNCTION CALBASEIMP(oCol,nNeto,nCol,nKey)
+   LOCAL nBaseImp:=0,nMtoIva:=0
+   LOCAL cIVA    :=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_TIPIVA]
+   LOCAL oColIva :=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_TIPIVA]
+   LOCAL x       :=oLIBCOMEDIT:PUTTIPIVA(oColIva,cIVA,oLIBCOMEDIT:COL_LBC_TIPIVA,nKey)
+   LOCAL nIVA    :=oLIBCOMEDIT:oBrw:aArrayData[oLIBCOMEDIT:oBrw:nArrayAt,oLIBCOMEDIT:COL_LBC_PORIVA]
+
+   nBaseImp:=nNeto/(1+nIVA/100)
+   nMtoIva :=PORCEN(nBaseImp,nIVA)
+
+   oColIva :=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_BASIMP]
+   oLIBCOMEDIT:PUTFIELDVALUE(oColIva,nBaseImp,oLIBCOMEDIT:COL_LBC_BASIMP,nKey)
+
+   oColIva :=oLIBCOMEDIT:oBrw:aCols[oLIBCOMEDIT:COL_LBC_MTOIVA]
+   oLIBCOMEDIT:PUTFIELDVALUE(oColIva,nMtoIva,oLIBCOMEDIT:COL_LBC_MTOIVA,nKey)
+
+   oColIva :=oLIBCOMEDIT:oBrw:aCols[nCol]
+   oLIBCOMEDIT:PUTFIELDVALUE(oCol,nNeto,nCol,nKey)
+  
+RETURN nBaseImp
+// EOF

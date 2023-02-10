@@ -1,0 +1,44 @@
+// Programa   : DPCTADELETEALL
+// Fecha/Hora : 10/02/2023 10:33:17
+// Propósito  : Para remover todo el plan de cuentas necesita resolver la integridad referencial
+// Creado Por : Juan Navas
+// Llamado por:
+// Aplicación :
+// Tabla      :
+
+#INCLUDE "DPXBASE.CH"
+
+PROCE MAIN()
+  LOCAL aTables
+  LOCAL cSql,cWhere,oTable,cTable,cField
+
+  // Lectura de Tablas Vinculadas
+  cSql:=[ SELECT LNK_TABLED,LNK_FIELDD ]+;
+        [ FROM dplink ]+;
+        [ WHERE LNK_TABLES="DPCTA" AND LNK_FIELDS LIKE "%CTA_CODIGO%" ]
+
+  oTable:=OpenTable(cSql,.T.)
+
+  WHILE !oTable:Eof()
+     cTable:=ALLTRIM(oTable:LNK_TABLED)
+     cField:=_VECTOR(ALLTRIM(oTable:LNK_FIELDD))[2]
+     SQLUPDATE(cTable,cField,oDp:cCtaIndef)
+     oTable:DbSkip()
+  ENDDO
+
+  oTable:End()
+  // Lectura de Cuenta contable y eliminacion individual
+  oTable:=OpenTable("SELECT CTA_CODIGO FROM DPCTA WHERE NOT CTA_CODIGO"+GetWhere("=",oDp:cCtaIndef),.T.)
+  oTable:SetForeignkeyOff() 
+
+  WHILE !oTable:Eof()
+     SQLDELETE("DPCTA","CTA_CODIGO"+GetWhere("=",oTable:CTA_CODIGO))
+     oTable:DbSkip()
+  ENDDO
+
+  oTable:End()
+  
+  MsgMemo("Eliminación de Registros del plan de cuenta","Concluido")
+
+RETURN NIL
+// EOF

@@ -8,9 +8,16 @@
 
 #INCLUDE "DPXBASE.CH"
 
-PROCE MAIN()
+PROCE MAIN(lAsk)
   LOCAL aTables
   LOCAL cSql,cWhere,oTable,cTable,cField
+
+  DEFAULT lAsk:=.T.
+
+  IF lAsk .AND. !MsgNoYes("Desea Remover todo el plan de Cuenta"+CRLF+"La Integración Contable quedará Indefinida")
+      RETURN .F.
+  ENDIF
+
 
   // Lectura de Tablas Vinculadas
   cSql:=[ SELECT LNK_TABLED,LNK_FIELDD ]+;

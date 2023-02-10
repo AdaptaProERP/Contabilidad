@@ -1,0 +1,611 @@
+// Programa   : DPCTAIMPORT
+// Fecha/Hora : 05/03/2006 16:39:12
+// Propósito  : Cierre Contable
+// Creado Por : Juan Navas
+// Llamado por: 
+// Aplicación : Contabilidad
+// Tabla      : DPCTA
+
+#INCLUDE "INCLUDE\DPXBASE.CH"
+#include "INCLUDE\REPORT.CH"
+
+PROCE MAIN(lEmpresa,cEmpresa,cCtaMod)
+  LOCAL aData,aCodInt:={}
+  LOCAL oTable,aData,nCuantos:=0
+  LOCAL aProgram:={},I,oFontBrw,oBrw,oCol,cSql
+  LOCAL cFile:="DPCTA.DBF",aFiles:={},aCodInt:={},aDbf:={}
+  LOCAL cTitle:="Importar Plan de Cuentas"
+  LOCAL cFileCod
+  LOCAL aCoors:=GetCoors( GetDesktopWindow() )
+
+ 
+  DEFAULT lEmpresa:=.F.,;
+          cEmpresa:=oDp:cEmpresa,;
+          cCtaMod :=oDp:cCtaMod
+
+  IF lEmpresa
+
+     cTitle:=cTitle+" Desde "+ALLTRIM(cEmpresa)
+
+     AADD(aFiles,cEmpresa)
+
+     IF oDp:nVersion>=5
+       AADD(aFiles,"Excel")
+     ENDIF
+
+     AADD(aDbf,{"DPCTAEMPRESA.DBF","DPCODINTEGRA.DBF"})
+//     cFileCod:="DPCTAS\DPCODINTEGRA.DBF"
+
+  ELSE
+
+     AADD(aFiles,"ModeloA")
+     AADD(aFiles,"ModeloB")
+     AADD(aFiles,"ModeloC")
+
+/*
+AADD(aFiles,"Ven-nif")
+     AADD(aFiles,"Comercial")
+     AADD(aFiles,"Gubernamental")
+*/
+
+
+
+
+     IF oDp:nVersion>=5
+       AADD(aFiles,"Excel")
+     ENDIF
+
+     IF oDp:nVersion>=6
+       AADD(aFiles,"NIIF desde Excel")
+     ENDIF
+
+     AADD(aFiles,"Ninguno" )
+
+     AADD(aDbf,{"DPCTA_VENNIF.DBF",""})
+     AADD(aDbf,{"DPCTA.DBF"       ,""})
+     AADD(aDbf,{"DPCTAGOB.DBF"    ,""})
+
+  ENDIF
+
+  aData:=LEERCUENTAS(aDbf[1,1],aDbf[1,2])
+
+  IF Empty(aData)
+     MensajeErr("No hay Cuentas para Importar")
+     RETURN .T.
+  ENDIF
+
+
+  cTitle  :=cTitle+", "+oDp:xDPCTAMODELO+" ["+cCtaMod+"-"+ALLTRIM(SQLGET("DPCTAMODELO","MPC_DESCRI","MPC_CODIGO"+GetWhere("=",cCtaMod)))+"] "
+  nCuantos:=LEN(aData)
+
+  DEFINE FONT oFontBrw NAME "Verdana" SIZE 0,-12
+
+//  oCtaImp:=DPEDIT():New(cTitle,"DPCTAIMPORT.EDT","oCtaImp",.T.)
+
+  DpMdi(cTitle,"oCtaImp","DPCTAIMPORT.EDT")
+  oCtaImp:Windows(0,0,aCoors[3]-160,690,.T.) // Maximizado
+
+
+  oCtaImp:lMsgBar :=.F.
+  oCtaImp:cFile   :=aFiles[1]
+  oCtaImp:nCuantos:=LEN(aData)
+  oCtaImp:aDbf    :=ACLONE(aDbf)
+  oCtaImp:cFileDbf:=aDbf[1]
+  oCtaImp:nContar :=0
+  oCtaImp:aCodInt :=aCodInt
+  oCtaImp:cCtaMod :=cCtaMod
+
+//  @ 12,0 SAY   oCtaImp:oSay   PROMPT " "  
+//  @ 12,0 METER oCtaImp:oMeter VAR oCtaImp:nContar
+
+  oCtaImp:oBrw:=TXBrowse():New( oCtaImp:oWnd )
+  oCtaImp:oBrw:SetArray( aData )
+
+  oBrw:=oCtaImp:oBrw
+  oBrw:SetFont(oFontBrw)
+
+  oBrw:lFastEdit:= .T.
+  oBrw:lHScroll := .F.
+
+  oCol:=oBrw:aCols[1]
+  oCol:cHeader     := "Código"
+  oCol:nWidth       := 180
+
+  oCol:=oBrw:aCols[2]
+  oCol:cHeader     := "Descripción"
+  oCol:nWidth       := 420
+
+  oCol:=oBrw:aCols[3]
+  oCol:cHeader      := "Ok"
+  oCol:nWidth       := 25
+  oCol:AddBmpFile("BITMAPS\checkverde.bmp")
+  oCol:AddBmpFile("BITMAPS\checkrojo.bmp")
+  oCol:bBmpData    := { ||oBrw:=oCtaImp:oBrw,IIF(oBrw:aArrayData[oBrw:nArrayAt,3],1,2) }
+  oCol:nDataStyle  := oCol:DefStyle( AL_LEFT, .F.)
+  oCol:bLDClickData:={||oCtaImp:CtaSelect(oCtaImp)}
+  oCol:bLClickHeader:={|nRow,nCol,nKey,oCol|oCtaImp:ChangeAllCta(oCtaImp,nRow,nCol,nKey,oCol,.T.)}
+
+  oBrw:bClrStd   := {|oBrw|oBrw:=oCtaImp:oBrw,nAt:=oBrw:nArrayAt, { iif( oBrw:aArrayData[nAt,3] , CLR_BLACK,  CLR_GRAY ),;
+                                                                    iif( oBrw:nArrayAt%2=0, oCtaImp:nClrPane1, oCtaImp:nClrPane2  ) } }
+
+  oBrw:bClrSel   := {|oBrw|oBrw:=oCtaImp:oBrw, { 65535,  16733011}}
+
+  oBrw:bClrHeader          := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
+  oBrw:bClrFooter          := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
+
+  oCtaImp:oBrw:CreateFromCode()
+  oCtaImp:bValid   :={|| EJECUTAR("BRWSAVEPAR",oCtaImp)}
+  oCtaImp:BRWRESTOREPAR()
+
+//  oBrw:bClrHeader  :={|| { 0,  12632256}}
+
+
+ 
+
+
+  oBrw:bLDblClick  :={||oCtaImp:CtaSelect()}
+
+  oCtaImp:oFocus:=oBrw
+
+  oCtaImp:oWnd:oClient := oCtaImp:oBrw
+
+  oCtaImp:Activate({||oCtaImp:NMCONBAR()})
+
+RETURN NIL
+
+/*
+// Coloca la Barra de Botones
+*/
+FUNCTION NMCONBAR()
+   LOCAL oCursor,oBar,oBtn,oFont,oCol,nDif
+   LOCAL nWidth :=0 // Ancho Calculado seg£n Columnas
+   LOCAL nHeight:=0 // Alto
+   LOCAL nLines :=0 // Lineas
+   LOCAL oDlg:=oCtaImp:oDlg,oFontB
+
+   DEFINE FONT oFontB NAME "Verdana" SIZE 0,-12 BOLD
+   
+   DEFINE CURSOR oCursor HAND
+   DEFINE BUTTONBAR oBar SIZE 52-15,60-15 OF oDlg 3D CURSOR oCursor
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\RUN.BMP";
+          ACTION oCtaImp:Importar()
+
+   oBtn:cToolTip:="Iniciar Importación de Cuentas"
+
+
+   
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\XDELETE.BMP",NIL,"BITMAPS\XDELETEG.BMP";
+          WHEN COUNT("DPASIENTOS")=0;
+          ACTION EJECUTAR("DPCTADELETEALL")
+
+   oBtn:cToolTip:="Remover plan de cuentas y resetear integración Contable"
+
+   DEFINE XBUTTON oBtn ;
+          OF oBar;
+          FILE oDp:cPathBitMaps+"configilx.BMP";
+          TOOLTIP "Definir Campos del Archivo Excel";
+          SIZE 35,35;
+          ACTION EJECUTAR("DPCTAILX")
+
+   oBtn:cToolTip:="Definir Importación desde Excel"
+
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\EXCEL.BMP";
+          ACTION (EJECUTAR("BRWTOEXCEL",oCtaImp:oBrw,"PLAN DE CUENTAS",oCtaImp:cFile))
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\XPRINT.BMP";
+          ACTION oCtaImp:REPORTECTA()
+
+   oBtn:cToolTip:="Imprimir Cuentas"
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\XFIND.BMP";
+          ACTION EJECUTAR("BRWSETFIND",oCtaImp:oBrw)
+
+  oBtn:cToolTip:="Buscar Programa"
+
+  DEFINE BUTTON oBtn;
+         OF oBar;
+         NOBORDER;
+         FONT oFont;
+         FILENAME "BITMAPS\xTOP.BMP";
+         ACTION (oCtaImp:oBrw:GoTop(),oCtaImp:oBrw:Setfocus())
+
+  oBtn:cToolTip:="Primer Programa de la Lista"
+
+  DEFINE BUTTON oBtn;
+         OF oBar;
+         NOBORDER;
+         FONT oFont;
+         FILENAME "BITMAPS\xSIG.BMP";
+         ACTION (oCtaImp:oBrw:PageDown(),oCtaImp:oBrw:Setfocus())
+
+  oBtn:cToolTip:="Siguiente Programa"
+
+  DEFINE BUTTON oBtn;
+         OF oBar;
+         NOBORDER;
+         FONT oFont;
+         FILENAME "BITMAPS\xANT.BMP";
+         ACTION (oCtaImp:oBrw:PageUp(),oCtaImp:oBrw:Setfocus())
+
+  oBtn:cToolTip:="Programa Anterior"
+
+  DEFINE BUTTON oBtn;
+         OF oBar;
+         NOBORDER;
+         FONT oFont;
+         FILENAME "BITMAPS\xFIN.BMP";
+         ACTION (oCtaImp:oBrw:GoBottom(),oCtaImp:oBrw:Setfocus())
+
+   oBtn:cToolTip:="Ultimo Programa"
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\XSALIR.BMP";
+          ACTION oCtaImp:Close()
+
+   oBtn:cToolTip:="Cerrar Formulario"
+
+   AEVAL(oBar:aControls,{|o,n|o:cMsg:=o:cToolTip})
+
+   oCtaImp:oBrw:SetColor(0,15790320)
+
+   oBar:SetColor(CLR_BLACK,oDp:nGris)
+   AEVAL(oBar:aControls,{|o,n|o:SetColor(CLR_BLACK,oDp:nGris)})
+
+   @ .1,50 COMBOBOX oCtaImp:oDpCta  VAR oCtaImp:cFile  ITEMS aFiles ;
+                   SIZE 145,NIL;
+                   ON CHANGE oCtaImp:CAMBIARCTA();
+                   FONT oFontB;
+                   WHEN LEN(oCtaImp:aDbf )>1
+
+   @ .1,88+05+10 SAY oCtaImp:oCuantos PROMPT " R: "+STRZERO(oCtaImp:nCuantos,4)+"/"+;
+              STRZERO(LEN(oCtaImp:oBrw:aArrayData),4);
+              OF oBar BORDER SIZE 105,22 UPDATE COLOR oDp:nClrYellowText,oDp:nClrYellow
+
+  oBar:bLClicked:={||DpFocus(oCtaImp:oDpCta), oCtaImp:oDpCta:Open() ,CursorArrow() }
+
+  @ 1.4,88+05+10 SAY   oCtaImp:oSay  PROMPT ""           OF oBar SIZE 105,20 BORDER;
+              COLOR oDp:nClrLabelText,oDp:nClrLabelPane 
+
+  @ 22,400+15   METER oCtaImp:oMeter VAR oCtaImp:nContar OF oBar SIZE 145,20 PIXEL COLOR 0,oDp:nGris
+ 
+RETURN .T.
+
+/*
+// Seleccionar Cuenta
+*/
+FUNCTION CtaSelect()
+  LOCAL oBrw:=oCtaImp:oBrw,I,nCuantos:=0,nLen
+  LOCAL nArrayAt,nRowSel,nAt:=0,nCuantos:=0
+  LOCAL lSelect
+  LOCAL nCol:=3
+  LOCAL lSelect
+  LOCAL cCodCta
+
+  IF ValType(oBrw)!="O"
+     RETURN .F.
+  ENDIF
+
+  nArrayAt:=oBrw:nArrayAt
+  nRowSel :=oBrw:nRowSel
+  lSelect :=oBrw:aArrayData[nArrayAt,nCol]
+  cCodCta :=ALLTRIM(oBrw:aArrayData[nArrayAt,1])
+  nLen    :=LEN(cCodCta)
+
+  FOR I=1 TO LEN(oBrw:aArrayData)
+    IF LEFT(oBrw:aArrayData[I,1],nLen)==cCodCta
+      oBrw:aArrayData[I,3]:=!lSelect
+      nCuantos++
+    ENDIF
+  NEXT I
+
+  IF nCuantos>0
+     oBrw:Refresh(.T.)
+     oBrw:nArrayAt:=nArrayAt
+     oBrw:nRowSel :=nRowSel
+  ELSE
+     oBrw:aArrayData[oBrw:nArrayAt,nCol]:=!lSelect
+     oBrw:RefreshCurrent()
+  ENDIF
+
+  oCtaImp:nCuantos:=0
+  AEVAL(oBrw:aArrayData,{|a,n| oCtaImp:nCuantos:=oCtaImp:nCuantos + IIF(a[3],1,0) })
+  oCtaImp:oCuantos:Refresh(.T.)
+
+RETURN .T.
+
+/*
+// Selecciona o Desmarca a Todos
+*/
+FUNCTION ChangeAllCta()
+   LOCAL oBrw:=oCtaImp:oBrw
+   LOCAL lSelect:=!oBrw:aArrayData[1,3]
+   oCtaImp:nCuantos:=0
+
+   AEVAL(oBrw:aArrayData,{|a,n|oBrw:aArrayData[n,3]:=lSelect})
+
+   AEVAL(oBrw:aArrayData,{|a,n| oCtaImp:nCuantos:=oCtaImp:nCuantos + IIF(a[3],1,0) })
+   oCtaImp:oCuantos:Refresh(.T.)
+
+   oBrw:Refresh(.T.)
+
+RETURN .T.
+
+FUNCTION LEERCUENTAS(cFile,cFileCod)
+   LOCAL aData:={},nLen
+
+//DPCTAS\DPCODINTEGRA.DBF",;
+
+   DEFAULT cFileCod:="",;
+           cFile   :="DPCTA.DBF"
+
+   cFile:="DPCTAS\"+cFile
+
+   CursorWait()
+
+   IF !FILE(cFile)
+     MensajeErr("Archivo "+cFile+" no Existe")
+     RETURN {}
+   ENDIF
+
+   CLOSE ALL
+
+   USE (cFile) VIA "DBFCDX" NEW
+
+   GO TOP
+   WHILE !EOF()
+     nLen:=MAX(0,LEN(ALLTRIM(CTA_CODIGO))-1)
+     AADD(aData,{CTA_CODIGO,SPACE(nLen)+CTA_DESCRI,.T.})
+     SKIP
+   ENDDO
+
+   USE
+
+
+   aCodInt:={}
+
+   IF FILE(cFileCod)
+
+// ? cFileCod
+     CLOSE ALL
+
+     USE (cFileCod) VIA "DBFCDX" NEW
+     GO TOP
+      
+     WHILE !EOF() 
+       AADD(aCodInt,{CIN_CODIGO,CIN_DESCRI,CIN_CODCTA})
+       SKIP
+     ENDDO
+
+     USE
+
+   ENDIF
+
+   CLOSE ALL
+  
+RETURN aData
+
+/*
+// Seleccionar Concepto
+*/
+FUNCTION Importar()
+  LOCAL oBrw:=oCtaImp:oBrw,dFecha,cNumero,I,oTable
+  LOCAL nArrayAt,nRowSel,nAt:=0,nCuantos:=0,nAt
+  LOCAL lSelect
+  LOCAL nCol:=3
+  LOCAL lSelect
+  LOCAL cWhere:=""
+//  LOCAL aCodInt:=ASQL("SELECT CIN_CODIGO,CIN_DESCRI,CIN_CODCTA FROM DPCODINTEGRA ")
+
+//  ViewArray(aCodInt) 
+
+  EJECUTAR("DPCTAMODCREA")
+  EJECUTAR("DPCTAMOD_EJER")
+
+
+  IF ValType(oBrw)!="O"
+     RETURN .F.
+  ENDIF
+
+  nArrayAt:=oBrw:nArrayAt
+  nRowSel :=oBrw:nRowSel
+
+  IF "NIIF"$oCtaImp:cFile 
+     // JN 28/04/2014
+     EJECUTAR("DPIMPRXLSRUN","PLAN DE CUENTAS NIIF")
+     RETURN .F.
+  ENDIF
+
+
+  IF "Excel"$oCtaImp:cFile 
+     // JN 28/04/2014
+     EJECUTAR("DPIMPRXLSRUN","PLAN DE CUENTAS")
+//     EJECUTAR("DPCTAILX") 
+     RETURN .F.
+  ENDIF
+
+  IF !MsgYesNo("Desea Importar "+LSTR(oCtaImp:nCuantos)+ " Cuentas Contables "," Importa Cuentas ")
+     RETURN .F.
+  ENDIF
+
+  nCuantos:=0
+
+  oDp:lExcluye:=.F.
+
+  oCtaImp:oMeter:SetTotal(oCtaImp:nCuantos)
+
+  FOR I=1 TO LEN(oBrw:aArrayData)
+
+    IF oBrw:aArrayData[I,3]
+
+      nCuantos++
+      oCtaImp:oMeter:Set(nCuantos)
+      oCtaImp:oSay:SetText(LSTR(oCtaImp:nCuantos)+"/"+LSTR(nCuantos)+" Cuenta: "+oBrw:aArrayData[I,1]+;
+                           " ",.T.)
+
+      oDp:lExcluye:=.F.
+
+      oTable:=OpenTable("SELECT CTA_CODIGO,CTA_DESCRI FROM DPCTA WHERE "+;
+                       "CTA_CODMOD"+GetWhere("=",oCtaImp:cCtaMod)+" AND "+;
+                       "CTA_CODIGO"+GetWhere("=",oBrw:aArrayData[I,1]),.T.)
+
+      IF oTable:RecCount()=0
+        oTable:Append()
+      ENDIF
+
+      oTable:REPLACE("CTA_CODMOD",oCtaImp:cCtaMod     )
+      oTable:REPLACE("CTA_CODIGO",oBrw:aArrayData[I,1])
+      oTable:REPLACE("CTA_DESCRI",oBrw:aArrayData[I,2])
+      oTable:REPLACE("CTA_ACTIVO",.T.                 )
+      oTable:Commit(IIF(oTable:RecCount()=0,NIL,oTable:cWhere))
+      oTable:End()
+
+      // Aqui Buscamos Codigo de Integracion
+      nAt:=ASCAN(oCtaImp:aCodInt,{|a,n|ALLTRIM(a[3])==ALLTRIM(oTable:CTA_CODIGO)})
+
+      IF nAt>0
+
+//         SQLUPDATE("DPCODINTEGRA","CIN_CODCTA",oCtaImp:aCodInt[nAt,3],"CIN_CODIGO"+;
+//                    GetWhere("=",oCtaImp:aCodInt[nAt,1]))
+
+      ENDIF
+
+      // RETURN .T.
+
+    ENDIF
+
+  NEXT I
+
+  AUDITAR("PROC" , NIL , "DPCTA", LSTR(nCuantos)+" Cuentas Importadas")
+
+
+  // Actualiza las Cuentas Contables del Impuestos
+
+//  IF ISMYSQLGET("DPCTA","CTA_CODIGO","2.2.2")
+//     SQLUPDATE("DPIVATIP","TIP_CTADEB","2.2.2","TIP_CTADEB"+GetWhere("=",oDp:cCtaIndef))
+//  ENDIF
+
+//  IF ISMYSQLGET("DPCTA","CTA_CODIGO","2.2.1")
+//     SQLUPDATE("DPIVATIP","TIP_CTACRE","2.2.1","TIP_CTACRE"+GetWhere("=",oDp:cCtaIndef))
+//  ENDIF
+
+  SQLUPDATE("DPCTA",{"CTA_CODMOD","CTA_ACTIVO"},{oDp:cCtaMod,.T.},"CTA_CODMOD IS NULL")
+//SQLUPDATE("DPCTA","CTA_CODMOD",oDp:cCtaMod,"CTA_CODMOD IS NULL")
+
+
+  // Indica las Cuentas de Asientos
+  EJECUTAR("SETDPCTADET",NIL,NIL,oCtaImp:cCtaMod)
+
+  DPLBX("DPCTAEGRESO.LBX")
+
+  MsgMemo(LSTR(nCuantos)+" Cuentas Importadas "," Proceso Concluido")
+
+
+
+RETURN .T.
+
+FUNCTION REPORTECTA()
+     LOCAL oReport,nField:=1
+     LOCAL aData  := ACLONE(oCtaImp:oBrw:aArrayData)
+
+     CursorWait()
+
+     nField := 1
+
+     REPORT oReport TITLE  "PLAN DE CUENTAS","PLAN DE CUENTAS" PREVIEW
+
+     COLUMN TITLE "Código";
+            DATA aData[nField][1] SIZE 15
+
+     COLUMN TITLE "Descripción";
+            DATA aData[nField][2] SIZE 40
+
+     END REPORT
+
+     /*
+     Just the following
+     */
+
+     oReport:bSkip := {|| nField++}
+
+     ACTIVATE REPORT oReport WHILE nField <= len(aData)
+
+RETURN NIL
+
+/*
+// Cambiar Cuenta
+*/
+FUNCTION CAMBIARCTA()
+   LOCAL aCodInt:={},aData:={}
+
+   IF "Excel"$oCtaImp:cFile .OR. "Ninguno"$oCtaImp:cFile 
+
+     IF "Excel"$oCtaImp:cFile 
+        AADD(aData,{"","Importar desde Excel",.F.})
+     ELSE
+        AADD(aData,{"","Ninguno",.F.})
+     ENDIF
+
+     oCtaImp:oBrw:aArrayData:=ACLONE(aData)
+     oCtaImp:oBrw:nArrayAt:=1
+     oCtaImp:oBrw:GoTop(.T.)
+     oCtaImp:oBrw:Refresh(.T.)
+     oCtaImp:nCuantos:=LEN(aData)
+     oCtaImp:oCuantos:Refresh(.T.)
+
+
+      RETURN NIL
+   ENDIF
+
+   oCtaImp:cFileDbf:=oCtaImp:aDbf[oCtaImp:oDpCta:nAt,1]
+   oCtaImp:cCodInt :=oCtaImp:aDbf[oCtaImp:oDpCta:nAt,2]
+
+
+   CursorWait()
+  
+
+   aData:=LEERCUENTAS(oCtaImp:cFileDbf,oCtaImp:cCodInt)
+
+   oCtaImp:oBrw:aArrayData:=ACLONE(aData)
+   oCtaImp:oBrw:nArrayAt:=1
+   oCtaImp:oBrw:GoTop(.T.)
+   oCtaImp:oBrw:Refresh(.T.)
+   oCtaImp:nCuantos:=LEN(aData)
+   oCtaImp:oCuantos:Refresh(.T.)
+
+RETURN .T.
+
+// oTable:aDataFill
+
+
+
+
+
+
+ FUNCTION BRWRESTOREPAR()
+ RETURN EJECUTAR("BRWRESTOREPAR",oCtaImp)
+// EOF

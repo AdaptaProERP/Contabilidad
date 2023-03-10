@@ -1003,7 +1003,6 @@ FUNCTION HACERASIENTO(nOption)
   oDOCPRORESXCNT:oMeter:SetTotal(oCursor:RecCount())
 
   EJECUTAR("CBTGETNUMPROC") // Obtiene numero del Proceso
- 
 
   WHILE !oCursor:Eof()
 
@@ -1085,10 +1084,10 @@ FUNCTION HACERASIENTO(nOption)
 
   cWhereM:="CBT_CODSUC"+GetWhere("=",oDp:cSucursal)+" AND CBT_NUMPRO"+GetWhere("=",oDp:cNumPro)+" AND CBT_USUARI"+GetWhere("=",oDp:cUsuario)
 
-?  cWhereM
-
   EJECUTAR("BRASIENTOSCOM",cWhereM,oDp:cSucursal,nPeriodo,oDOCPRORESXCNT:dDesde,oDOCPRORESXCNT:dHasta,cTitle)
   
+  oDp:cNumPro:=""
+
 RETURN .T.
 
 PROCE MENUCONTAB()

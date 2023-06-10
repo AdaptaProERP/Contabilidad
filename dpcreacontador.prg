@@ -73,7 +73,7 @@ PROCE MAIN(oBtnFrm,cRif)
 
   FOR I=1 TO LEN(aSay)
 
-    nLine:=(I*.8)
+    nLine:=1.2+(I*.8)
 
     @ nLine,.5 SAY oSay PROMPT aSay[I,1] SIZE 45,10;
               COLOR NIL,oDp:nGris RIGHT FONT oFontB OF oDlg
@@ -126,6 +126,7 @@ PROCE MAIN(oBtnFrm,cRif)
                   SIZE 100,NIL;
                   COLOR NIL,CLR_WHITE PIXEL FONT oFontB
 
+/*
   DEFINE FONT oFont  NAME "Tahoma"   SIZE 0,-14
 
   @ 6.5+2.5+.5-2,17+5+8-14 BUTTON " Aceptar ";
@@ -139,14 +140,14 @@ PROCE MAIN(oBtnFrm,cRif)
              FONT oFontB;
              ACTION (lOk:=.F.,oDlg:End()) CANCEL
 
-
+*/
   IF aPoint=NIL
 
-    ACTIVATE DIALOG oDlg CENTERED
+    ACTIVATE DIALOG oDlg CENTERED ON INIT SETBTBAR()
 
   ELSE
 
-    ACTIVATE DIALOG oDlg ON INIT (oDlg:Move(aPoint[1], aPoint[2],NIL,NIL,.T.),;
+    ACTIVATE DIALOG oDlg ON INIT (SETBTBAR(),oDlg:Move(aPoint[1], aPoint[2],NIL,NIL,.T.),;
                                   oDlg:SetSize(nWidth+40,nHeight+70+16))
                                   
 
@@ -157,6 +158,37 @@ PROCE MAIN(oBtnFrm,cRif)
   ENDIF
 
 RETURN aLine
+
+FUNCTION SETBTBAR()
+  LOCAL oCursor,oBar,oBtn,oFont
+ 
+  DEFINE CURSOR oCursor HAND
+  DEFINE BUTTONBAR oBar SIZE 52-15,60-15 OF oDlg 3D CURSOR oCursor
+  DEFINE FONT oFont  NAME "Tahoma"   SIZE 0, -14 BOLD
+
+  DEFINE BUTTON oBtn;
+            OF oBar;
+            NOBORDER;
+            FONT oFont;
+            FILENAME "BITMAPS\XSAVE.BMP",NIL,"BITMAPS\XSAVEG.BMP";
+            ACTION (lOk:=.t.,;
+                   IF(lOk,oDlg:End(),NIL))
+
+   oBtn:cToolTip:="Guardar"
+  
+   DEFINE BUTTON oBtn;
+         OF oBar;
+         NOBORDER;
+         FONT oFont;
+         FILENAME "BITMAPS\XCANCEL.BMP";
+         ACTION (lOk:=.F.,oDlg:End()) CANCEL
+
+  oBar:SetColor(CLR_BLACK,oDp:nGris)
+
+  AEVAL(oBar:aControls,{|o,n| o:SetColor(CLR_BLACK,oDp:nGris) })
+
+
+RETURN .T.
 
 FUNCTION VALRIFCLI()
 RETURN .T.

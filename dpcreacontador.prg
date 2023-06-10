@@ -13,7 +13,7 @@ PROCE MAIN(oBtnFrm,cRif)
   LOCAL lOk:=.F.
   LOCAL nWidth   :=390+60+40, nHeight:=310
   LOCAL aPoint   :=IF(oBtnFrm=NIL , NIL , AdjustWnd( oBtnFrm, nWidth, nHeight ))
-  LOCAL aTipo    :={"Independiente","Firma Contable","Estudiante","Académico","Otro"}
+  LOCAL aUtiliz  :={"Independiente","Firma Contable","Estudiante","Académico","Otro"}
   LOCAL aSexo    :={"Femenino","Masculino"}
   LOCAL aLine    :={}
   LOCAL aEstados :={"Amazonas","Anzoátegui","Apure","Aragua","Barinas","Bolívar","Carabobo","Cojedes","Delta Amacuro","Distrito Federal","Falcón","Guárico",;
@@ -30,7 +30,7 @@ PROCE MAIN(oBtnFrm,cRif)
   LOCAL cEmail :=SPACE(80)
   LOCAL cCPC   :=SPACE(06)
   LOCAL cSexo  :=aSexo[1]
-  LOCAL cTipo  :=aTipo[1]
+  LOCAL cUtiliz:=aUtiliz[1]
   LOCAL cEstado:=aEstados[1]
   LOCAL nCantCli:=0
 
@@ -38,7 +38,7 @@ PROCE MAIN(oBtnFrm,cRif)
 
   AADD(aSay,{"RIF:"            ,NIL})
   AADD(aSay,{"Nombre:"         ,NIL})
-  AADD(aSay,{"Tipo:"           ,NIL})
+  AADD(aSay,{"Uso:"            ,NIL})
   AADD(aSay,{"Sexo:"           ,NIL})
   AADD(aSay,{"Cant. Clientes:" ,NIL})
   AADD(aSay,{"Teléfono 1:"     ,NIL})
@@ -54,7 +54,7 @@ PROCE MAIN(oBtnFrm,cRif)
 
      DEFINE DIALOG oDlg;
             TITLE "Registro de Usuario Contable ";
-            FROM 0,0 TO 18+06+5-08,47+10+10-00;
+            FROM 0,0 TO 18+06+5-08,47+10+10+5;
             COLOR NIL,oDp:nGris
   ELSE
 
@@ -68,6 +68,8 @@ PROCE MAIN(oBtnFrm,cRif)
   ENDIF
 
   oDlg:lHelpIcon:=.F.
+
+  @ .5,22+0.1 BITMAP oDp:oBmp FILENAME "bitmaps\contaduría.bmp" OF oDlg  SIZE 58.5+48,097+25.7+14 NOBORDER
 
   FOR I=1 TO LEN(aSay)
 
@@ -91,7 +93,7 @@ PROCE MAIN(oBtnFrm,cRif)
                  SIZE 120,10;
                  COLOR NIL,CLR_WHITE PIXEL FONT oFontB
 
-   @ aSay[3,2],50 COMBOBOX oTipo  VAR cTipo ITEMS aTipo;
+   @ aSay[3,2],50 COMBOBOX oUtiliz  VAR cUtiliz ITEMS aUtiliz;
                   SIZE 100,NIL;
                   COLOR NIL,CLR_WHITE PIXEL FONT oFontB
 
@@ -116,7 +118,7 @@ PROCE MAIN(oBtnFrm,cRif)
                  COLOR NIL,CLR_WHITE;
                  SIZE 120,10 PIXEL FONT oFontB
 
-  @ aSay[9,2],50 GET oCI VAR cCPC PICTURE "999999999";
+  @ aSay[9,2],50 GET oCPC VAR cCPC PICTURE "999999999";
                  COLOR NIL,CLR_WHITE;
                  SIZE 80,10 PIXEL FONT oFontB
 
@@ -129,7 +131,7 @@ PROCE MAIN(oBtnFrm,cRif)
   @ 6.5+2.5+.5-2,17+5+8-14 BUTTON " Aceptar ";
              SIZE 32,12;
              FONT oFontB;
-             ACTION (lOk:=CLIGRABAR(cRif) ,;
+             ACTION (lOk:=.t.,;
                  IF(lOk,oDlg:End(),NIL))
 
   @ 6.5+2.5+.5-2,23+5+8-14 BUTTON " Salir   ";
@@ -151,7 +153,7 @@ PROCE MAIN(oBtnFrm,cRif)
   ENDIF
 
   IF lOk 
-     aLine:={cRif}
+     aLine:={cRif,cNombre,cUtiliz,cSexo,nCantCli,cTel1,cTel2,cEmail,cCPC,cEstado}
   ENDIF
 
 RETURN aLine

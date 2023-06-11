@@ -11,19 +11,19 @@
 PROCE MAIN(oBtnFrm,cRif)
   LOCAL oDlg,oFont,oFontB,oBtn,aSay:={},I,oSay,nLine
   LOCAL lOk:=.F.
-  LOCAL nWidth   :=390+60+40, nHeight:=310
+  LOCAL nWidth   :=390+60+40+50, nHeight:=300-40
   LOCAL aPoint   :=IF(oBtnFrm=NIL , NIL , AdjustWnd( oBtnFrm, nWidth, nHeight ))
   LOCAL aUtiliz  :={"Independiente","Firma Contable","Estudiante","Académico","Otro"}
   LOCAL aSexo    :={"Femenino","Masculino"}
   LOCAL aLine    :={}
-  LOCAL aEstados :={"Amazonas","Anzoátegui","Apure","Aragua","Barinas","Bolívar","Carabobo","Cojedes","Delta Amacuro","Distrito Federal","Falcón","Guárico",;
+  LOCAL aEstados :={"-Seleccionar","Amazonas","Anzoátegui","Apure","Aragua","Barinas","Bolívar","Carabobo","Cojedes","Delta Amacuro","Distrito Federal","Falcón","Guárico",;
                     "Lara","Mérida","Miranda","Monagas","Nueva Esparta","Portuguesa","Sucre","Táchira","Trujillo","Vargas","Yaracuy","Zulia"}
 
   LOCAL oTel1,oTel2,oEmail,oCI
   LOCAL oBtn2,oBtn2
   LOCAL oCliente,cCodigo
 
-  LOCAL oRif,oNombre,oCantCli
+  LOCAL oRif,oNombre,oCantCli,oEstado
   LOCAL cNombre:=SPACE(80)
   LOCAL cTel1  :=SPACE(20)
   LOCAL cTel2  :=SPACE(20)
@@ -60,7 +60,7 @@ PROCE MAIN(oBtnFrm,cRif)
 
      DEFINE DIALOG oDlg;
             TITLE "Registro de Usuario Contable ";
-            PIXEL OF oGet:oWnd;
+            PIXEL OF oBtnFrm:oWnd;
             STYLE nOr( DS_SYSMODAL, DS_MODALFRAME );
             COLOR NIL,oDp:nGris
 
@@ -69,7 +69,7 @@ PROCE MAIN(oBtnFrm,cRif)
 
   oDlg:lHelpIcon:=.F.
 
-  @ .5,22+0.1 BITMAP oDp:oBmp FILENAME "bitmaps\contaduría.bmp" OF oDlg  SIZE 58.5+48,097+25.7+14 NOBORDER
+  @ .5+1.2,22+0.1 BITMAP oDp:oBmp FILENAME "bitmaps\contaduría.bmp" OF oDlg  SIZE 58.5+48,097+25.7+14 NOBORDER
 
   FOR I=1 TO LEN(aSay)
 
@@ -110,7 +110,7 @@ PROCE MAIN(oBtnFrm,cRif)
                  COLOR NIL,CLR_WHITE;
                  SIZE 80,10 PIXEL FONT oFontB
 
-  @ aSay[7,2],50 GET oTel1 VAR cTel2;
+  @ aSay[7,2],50 GET oTel2 VAR cTel2;
                  COLOR NIL,CLR_WHITE;
                  SIZE 80,10 PIXEL FONT oFontB
 
@@ -124,7 +124,8 @@ PROCE MAIN(oBtnFrm,cRif)
 
   @ aSay[10,2],50 COMBOBOX oEstado  VAR cEstado ITEMS aEstados;
                   SIZE 100,NIL;
-                  COLOR NIL,CLR_WHITE PIXEL FONT oFontB
+                  COLOR NIL,CLR_WHITE PIXEL FONT oFontB;
+                  ON CHANGE VALCONTADOR()
 
 /*
   DEFINE FONT oFont  NAME "Tahoma"   SIZE 0,-14
@@ -171,7 +172,7 @@ FUNCTION SETBTBAR()
             NOBORDER;
             FONT oFont;
             FILENAME "BITMAPS\XSAVE.BMP",NIL,"BITMAPS\XSAVEG.BMP";
-            ACTION (lOk:=.t.,;
+            ACTION (lOk:=VALCONTADOR(),;
                    IF(lOk,oDlg:End(),NIL))
 
    oBtn:cToolTip:="Guardar"
@@ -191,6 +192,48 @@ FUNCTION SETBTBAR()
 RETURN .T.
 
 FUNCTION VALRIFCLI()
+RETURN .T.
+
+FUNCTION VALCONTADOR()
+   LOCAL cTitle:="Validación",cTipRif:=LEFT(ALLTRIM(cRif),1)
+
+   IF "-"$cEstado
+      oEstado:MsgErr("Seleccione Estado",cTitle,220,110)
+      CursorArrow()
+      oEstado:Open()
+      RETURN .F.
+   ENDIF
+
+   IF !(cTipRif$"VE")
+      oRif:MsgErr("RIF "+cRif+" debe empezar por V o E",cTitle,280,110)
+      CursorArrow()
+      RETURN .F.
+   ENDIF
+
+   IF Empty(cNombre)
+      oNombre:MsgErr("Introduzca el Nombre",cTitle,280,110)
+      CursorArrow()
+      RETURN .F.
+   ENDIF
+
+   IF Empty(cTel1+cTel2)
+      oTel1:MsgErr("Introduzca #de Teléfono",cTitle,280,110)
+      CursorArrow()
+      RETURN .F.
+   ENDIF
+
+   IF Empty(cEmail)
+      oEmail:MsgErr("eMail Requerido",cTitle,280,110)
+      CursorArrow()
+      RETURN .F.
+   ENDIF
+
+   IF !EJECUTAR("EMAILVALID",cEmail)
+      oEmail:MsgErr(oDp:cMail,cTitle,280,110)
+      CursorArrow()
+      RETURN .F.
+   ENDIF
+
 RETURN .T.
 // EOF
 

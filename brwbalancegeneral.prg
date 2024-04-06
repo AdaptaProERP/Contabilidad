@@ -1,6 +1,6 @@
 // Programa   : BRWBALANCEGENERAL 
-// Fecha/Hora : 08/05/2021 08:52:05
-// Propósito  : Balance de Comprobación en Browse
+// Fecha/Hora : 04/04/2024 08:52:05
+// Propósito  : Balance General mediante Browse
 // Creado Por : Juan Navas
 // Llamado por:
 // Aplicación :
@@ -8,7 +8,7 @@
 
 #INCLUDE "DPXBASE.CH"
 
-PROCE MAIN(oGenRep,RGO_C1,RGO_C2,RGO_C3,"BG",RGO_C5,RGO_C6,RGO_C7,RGO_C8,RGO_C9,RGO_I1,RGO_RGO_F1)
+PROCE MAIN(oGenRep,RGO_C1,RGO_C2,RGO_C3,cBG,RGO_C5,RGO_C6,RGO_C7,RGO_C8,RGO_C9,RGO_I1,RGO_RGO_F1)
   LOCAL aData
   LOCAL aNumEje:={}
   LOCAL cTitle :="Balance General"
@@ -16,19 +16,16 @@ PROCE MAIN(oGenRep,RGO_C1,RGO_C2,RGO_C3,"BG",RGO_C5,RGO_C6,RGO_C7,RGO_C8,RGO_C9,
   LOCAL cNumEje
   LOCAL cServer,cCodPar,aTotal:={},aTotal1:={}
   LOCAL oCursor,aLine,cField
-  LOCAL cCtaIng:=ALLTRIM(oDp:cCtaGp1)
-  LOCAL cGp    :="GP"
-  LOCAL cCenCos:="",cCodMon:="",cPorcen:=""
+  LOCAL cCtaIng:="" // ALLTRIM(oDp:cCtaBg2)
+  LOCAL cCenCos:="",cCodMon:=""
   LOCAL dDesde :=CTOD(""),dHasta:=CTOD("")
 
   IF Type("oBrBalGen")="O" .AND. oBrBalGen:oWnd:hWnd>0
       RETURN EJECUTAR("BRRUNNEW",oBrBalGen,GetScript())
   ENDIF
  
-//  DEFAULT dDesde:=oDp:dFchInicio,;
-//          dHasta:=oDp:dFchCierre
-
-  DEFAULT RGO_C1:=FCHFINMES(oDp:dFecha),;
+  DEFAULT cBG   :="BG",;
+          RGO_C1:=FCHFINMES(oDp:dFecha),;
           RGO_C2:=4,;
           RGO_C3:="@E 99,999,999,999,999,999.99",;
           RGO_C4:=20,;
@@ -42,17 +39,10 @@ PROCE MAIN(oGenRep,RGO_C1,RGO_C2,RGO_C3,"BG",RGO_C5,RGO_C6,RGO_C7,RGO_C8,RGO_C9,
           RGO_C12:=NIL,;
           RGO_I1:="",;
           RGO_F1:=""
-          
-
-// ? oGenRep,dDesde,dHasta,RGO_C3,RGO_C4,RGO_C6,RGO_I1,RGO_F1,RGO_I2,RGO_F2,cCodMon
 
   aNumEje:=ATABLE(" SELECT EJE_NUMERO FROM DPEJERCICIOS "+;
                   " INNER JOIN DPCBTE ON CBT_CODSUC=EJE_CODSUC AND CBT_NUMEJE=EJE_NUMERO "+;
                   " WHERE EJE_CODSUC"+GetWhere("=",oDp:cSucursal)+" GROUP BY EJE_NUMERO ORDER BY EJE_NUMERO ")
-
-
-//  RGO_C1:=dDesde
-//  RGO_C2:=dHasta
 
   IF Empty(RGO_C1)
      RGO_C1:=FCHFINMES(oDp:dFecha)
@@ -98,13 +88,10 @@ PROCE MAIN(oGenRep,RGO_C1,RGO_C2,RGO_C3,"BG",RGO_C5,RGO_C6,RGO_C7,RGO_C8,RGO_C9,
      RGO_F1:=""
   ENDIF
 
-  dHasta:=RGO_C1
-
-
+  dHasta :=RGO_C1
   cNumEje:=EJECUTAR("GETNUMEJE",RGO_C1)
-
   aData  :=CREAR_BG()
-
+  
   IF Empty(aData)
      MensajeErr("Balance no Generado hasta la fecha "+DTOC(RGO_C1))
      RETURN {}
@@ -115,40 +102,6 @@ PROCE MAIN(oGenRep,RGO_C1,RGO_C2,RGO_C3,"BG",RGO_C5,RGO_C6,RGO_C7,RGO_C8,RGO_C9,
   ViewData(aData,cTitle,cWhere)
 
   oDp:aBalCom:=ACLONE(aData)
-
-RETURN aData
-
-FUNCTION CREAR_BG(oCursor)
-  LOCAL aData:={},aLine,cField,I
-
-  DEFAULT oCursor   :=EJECUTAR("BGCALCULAR",oGenRep,RGO_C1,RGO_C2,RGO_C3,"BG",RGO_C5,RGO_C6,RGO_C7,RGO_C8,RGO_C9)
-
-  IF !ValType(oCursor)="O"
-     MensajeErr("Balance no Generado")
-     RETURN {}
-  ENDIF
-
-  oCursor:GoTop()
-
-  WHILE !oCursor:EOF()
-
-     aLine:={oCursor:CTA_CODIGO,oCursor:TITULO}
-
-     FOR I=1 TO RGO_C2
-
-       cField:="COL"+STRZERO(I,2)
-
-       IF oCursor:FieldPos(cField)>0
-          AADD(aLine,oCursor:FieldGet(cField))
-       ENDIF
-
-     NEXT I
-
-     AADD(aData,aLine)
-
-     oCursor:DbSkip()
-
-  ENDDO
 
 RETURN aData
 
@@ -190,7 +143,7 @@ FUNCTION ViewData(aData,cTitle,cWhere_)
    oBrBalGen:cCodMon  :=cCodMon
    oBrBalGen:cCtaIng  :=cCtaIng
 
-   oBrBalGen:cGp    :=cGp
+   oBrBalGen:cBG    :=cBG
 
    oBrBalGen:RGO_C1 :=RGO_C1
    oBrBalGen:RGO_C2 :=RGO_C2
@@ -208,12 +161,7 @@ FUNCTION ViewData(aData,cTitle,cWhere_)
 
    oBrBalGen:RGO_I1:=RGO_I1
    oBrBalGen:RGO_F1:=RGO_F1
-   oBrBalGen:RGO_I2:=RGO_I2
-   oBrBalGen:RGO_F2:=RGO_F2
-
    oBrBalGen:oGenRep:=oGenRep
-
-// oGenRep,RGO_C1,RGO_C2,RGO_C3,RGO_C4,"GP",RGO_C6,RGO_C7,RGO_C8,RGO_C9,RGO_C10
 
    oBrBalGen:oBrw:=TXBrowse():New( IF(oBrBalGen:lTmdi,oBrBalGen:oWnd,oBrBalGen:oDlg ))
    oBrBalGen:oBrw:SetArray( aData, .F. )
@@ -233,8 +181,6 @@ FUNCTION ViewData(aData,cTitle,cWhere_)
    oBrBalGen:nClrPane3:=CLR_HRED
    oBrBalGen:nClrPane4:=CLR_HBLUE
    oBrBalGen:nClrPane5:=4227072
-
-
 
    AEVAL(oBrBalGen:oBrw:aCols,{|oCol|oCol:oHeaderFont:=oFontB})
 
@@ -322,7 +268,11 @@ IF LEN(oBrBalGen:oBrw:aCols)>6
 
 ENDIF
 
-  oCol:cFooter      :=FDP(oDp:nUtilidad,"999,999,999,999,999,999.99")
+   oDp:nUtilidad:=0
+   oCol:cFooter      :=FDP(oDp:nUtilidad,"999,999,999,999,999,999.99")
+
+   oCol:oHeaderFont:=oFontB
+   oCol:oDataFont  :=oFontB
 
 
    oBrBalGen:oBrw:aCols[1]:cFooter:=" #"+LSTR(LEN(aData))
@@ -370,26 +320,10 @@ FUNCTION ViewDatBar()
 
    DEFINE FONT oFont  NAME "Tahoma"   SIZE 0, -10 BOLD
 
-
- // Emanager no Incluye consulta de Vinculos
-
-/*
+   // Emanager no Incluye consulta de Vinculos/*
    oBrBalGen:oFontBtn   :=oFont    
    oBrBalGen:nClrPaneBar:=oDp:nGris
    oBrBalGen:oBrw:oLbx  :=oBrBalGen
-
- DEFINE BUTTON oBtn;
-          OF oBar;
-          NOBORDER;
-          FONT oFont;
-          FILENAME "BITMAPS\RUN.BMP";
-          TOP PROMPT "Ejecutar"; 
-          ACTION  oBrBalGen:GPCALCULAR()
-
-   oBrBalGen:oBtn:=oBtn:bAction
- 
-   oBtn:cToolTip:="Ejecutar Balance"
-*/
 
    DEFINE BUTTON oBtn;
           OF oBar;
@@ -427,7 +361,7 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\balancecomprobacion.bmp";
-          TOP PROMPT "Balance"; 
+          TOP PROMPT "Balance C."; 
           ACTION oBrBalGen:BALCOM()
 
    oBtn:cToolTip:="Balance de Comprobación"
@@ -449,9 +383,9 @@ FUNCTION ViewDatBar()
           FONT oFont;
           FILENAME "BITMAPS\XPRINT.BMP";
           TOP PROMPT "Imprimir"; 
-          ACTION  oBrBalGen:PRINTBALGYP()
+          ACTION  oBrBalGen:PRINTBALGEN()
 
-   oBtn:cToolTip:="Imprimir Ganancias y Pérdidas"
+   oBtn:cToolTip:="Imprimir Balance General"
 
 
    DEFINE BUTTON oBtn;
@@ -496,20 +430,6 @@ FUNCTION ViewDatBar()
           WHEN LEN(oBrBalGen:oBrw:aArrayData)>1
 
    oBtn:cToolTip:="Filtrar según Valores Comunes"
-
-/*
-      DEFINE BUTTON oBtn;
-             OF oBar;
-             NOBORDER;
-             FONT oFont;
-             MENU EJECUTAR("BRBTNMENU",{"Opción1","Opción"},"oFrm");
-             FILENAME "BITMAPS\MENU.BMP";
-               TOP PROMPT "Menú"; 
-              ACTION  1=1;
-
-             oBtn:cToolTip:="Boton con Menu"
-
-*/
 
 
 IF nWidth>300
@@ -683,6 +603,8 @@ ENDIF
   // Campo : Periodo
   //
 
+IF .F.
+
   @ 10+35+20, nLin COMBOBOX oBrBalGen:oPeriodo;
              VAR oBrBalGen:cPeriodo ITEMS aPeriodos;
              SIZE 100,200;
@@ -749,15 +671,39 @@ ENDIF
                ACTION oBrBalGen:HACERWHERE(oBrBalGen:dDesde,oBrBalGen:dHasta,oBrBalGen:cWhere,.T.);
                WHEN oBrBalGen:lWhen
 
+ELSE
+
+  @ 10+35+20, nLin+252 BMPGET oBrBalGen:oHasta  VAR oBrBalGen:dHasta;
+                PICTURE "99/99/9999";
+                PIXEL;
+                NAME "BITMAPS\Calendar.bmp";
+                ACTION LbxDate(oBrBalGen:oHasta,oBrBalGen:dHasta);
+                SIZE 80,23;
+                WHEN oBrBalGen:lWhen ;
+                OF oBar;
+                FONT oFont
+
+   oBrBalGen:oHasta:cToolTip:="F6: Calendario"
+
+   @ 10+35+20, oBrBalGen:oHasta:nRight()+18 BUTTON oBrBalGen:oBtn PROMPT " > " SIZE 27,23;
+               FONT oFont;
+               OF oBar;
+               PIXEL;
+               WHEN .T.;
+               ACTION oBrBalGen:HACERWHERE(oBrBalGen:dDesde,oBrBalGen:dHasta,oBrBalGen:cWhere,.T.);
+               WHEN oBrBalGen:lWhen
+
+
+ENDIF
+
   AEVAL(oBar:aControls,{|o|o:ForWhen(.T.)})
 
-
   @ 10+35+20,nLin+325+50 COMBOBOX oBrBalGen:oNumEje;
-                   VAR oBrBalGen:cNumEje;
-                   ITEMS oBrBalGen:aNumEje;
-                   WHEN LEN(oBrBalGen:aNumEje)>1;
-                   OF oBAR PIXEL SIZE 60,NIL;
-                   ON CHANGE oBrBalGen:CAMBIAEJERCICIO() FONT oFont
+                         VAR oBrBalGen:cNumEje;
+                         ITEMS oBrBalGen:aNumEje;
+                         WHEN LEN(oBrBalGen:aNumEje)>1;
+                         OF oBAR PIXEL SIZE 60,NIL;
+                         ON CHANGE oBrBalGen:CAMBIAEJERCICIO() FONT oFont
 
   oBrBalGen:oNumEje:cMsg    :="Seleccione el Ejercicio"
   oBrBalGen:oNumEje:cToolTip:="Seleccione el Ejercicio"
@@ -799,7 +745,7 @@ ENDIF
 
   NEXT I
 
-
+  BMPGETBTN(oBar)
 
 RETURN .T.
 
@@ -866,7 +812,7 @@ FUNCTION HACERWHERE(dDesde,dHasta,cWhere_,lRun)
 RETURN cWhere
 
 FUNCTION SAVEPERIODO()
-  LOCAL cFileMem:="USER\BRWGANANCIAYP.MEM",V_nPeriodo:=oBrBalGen:nPeriodo
+  LOCAL cFileMem:="USER\BRWBALANCEGENERAL.MEM",V_nPeriodo:=oBrBalGen:nPeriodo
   LOCAL V_dDesde:=oBrBalGen:dDesde
   LOCAL V_dHasta:=oBrBalGen:dHasta
 
@@ -975,7 +921,7 @@ FUNCTION CAMBIAEJERCICIO()
   oBrBalGen:dDesde:=SQLGET("DPEJERCICIOS","EJE_DESDE,EJE_HASTA","EJE_CODSUC"+GetWhere("=",oBrBalGen:cCodSuc)+" AND EJE_NUMERO"+GetWhere("=",oBrBalGen:cNumEje))
   oBrBalGen:dHasta:=DPSQLROW(2,CTOD(""))
 
-  oBrBalGen:oDesde:Refresh(.T.)
+//  oBrBalGen:oDesde:Refresh(.T.)
   oBrBalGen:oHasta:Refresh(.T.)
 
   oDp:oCursor:=NIL
@@ -995,27 +941,36 @@ FUNCTION HACERBALANCE(dDesde,dHasta,oBrBalGen,oGenRep,RGO_C3,RGO_C4,RGO_C6,RGO_I
 
   DEFAULT oDp:oCursor:=NIL
 
-  RGO_C1:=dDesde
-  RGO_C2:=dHasta
+  oDp:nUtilidad:=0
+
+  RGO_C1:=dHasta
 
   IF ValType(oBrBalGen)="O"
 
      oBrw :=oBrBalGen:oBrw
      aLine:=oBrBalGen:oBrw:aArrayData[oBrBalGen:oBrw:nArrayAt]
 
-     RGO_C3:=oBrBalGen:RGO_C3
-     RGO_C4:=oBrBalGen:RGO_C4
-     RGO_C6:=oBrBalGen:RGO_C6
      RGO_I1:=oBrBalGen:RGO_I1
      RGO_F1:=oBrBalGen:RGO_F1
-     RGO_I2:=oBrBalGen:RGO_I2
-     RGO_F2:=oBrBalGen:RGO_F2
+
+     RGO_C2 :=oBrBalGen:RGO_C2
+     RGO_C3 :=oBrBalGen:RGO_C3 
+     RGO_C4 :=oBrBalGen:RGO_C4
+     RGO_C5 :=oBrBalGen:RGO_C5
+     RGO_C6 :=oBrBalGen:RGO_C6
+     RGO_C7 :=oBrBalGen:RGO_C7
+     RGO_C8 :=oBrBalGen:RGO_C8
+     RGO_C9 :=oBrBalGen:RGO_C9
+     RGO_C10:=oBrBalGen:RGO_C10
+     RGO_C11:=oBrBalGen:RGO_C11
+     RGO_C12:=oBrBalGen:RGO_C12
+     RGO_C13:=oBrBalGen:RGO_C13
 
   ENDIF
   
-  oCursor:=EJECUTAR("GPCALCULAR",oGenRep,RGO_C1,RGO_C2,RGO_C3,RGO_C4,"GP",RGO_C6,RGO_C7,RGO_C8,RGO_C9,RGO_C10)
+  oCursor:=EJECUTAR("BGCALCULAR",oGenRep,RGO_C1,RGO_C2,RGO_C3,RGO_C4,"GP",RGO_C6,RGO_C7,RGO_C8,RGO_C9,RGO_C10)
 
-  aData  :=oBrBalGen:CREAR_GYP(oCursor)
+  aData  :=oBrBalGen:CREAR_BG(oCursor) // oCursor)
 
   IF ValType(oBrw)="O" 
 
@@ -1058,20 +1013,7 @@ FUNCTION VERBROWSE()
   IF Empty(cCodCta) .OR. !ISSQLFIND("DPCTA","CTA_CODIGO"+GetWhere("=",cCodCta))
      RETURN .F.
   ENDIF
-/*
-  IF oBrBalGen:oBrw:nColSel=3
-     // Buscamos el ejercicio Anterior
-     dDesdeA:=SQLGET("DPEJERCICIOS","EJE_DESDE,EJE_HASTA","EJE_HASTA"+GetWhere("<",oBrBalGen:dDesde)+" ORDER BY EJE_HASTA DESC LIMIT 1")
-     dHastaA:=DPSQLROW(2,dDesdeA)
 
-     IF !Empty(dDesdeA)
-        dDesde  :=dDesdeA
-        dHasta  :=dHastaA
-        nPeriodo:=11
-     ENDIF
-
-  ENDIF
-*/
   EJECUTAR("BRDPASIENTOS","MOC_CODSUC"+GetWhere("=",oDp:cSucursal)+" AND "+cWhereL+" AND "+;
                           GetWhereOr("MOC_ACTUAL",cActual),NIL,nPeriodo,dDesde,dHasta,NIL,cCodCta,cActual,lDelete,cCodMon,lSldIni)
 
@@ -1081,11 +1023,10 @@ RETURN .T.
 /*
 // Imprimir Balance de Comprobación
 */
-FUNCTION PRINTBALGYP()
-  LOCAL oRep:=REPORTE("GANANCIAYP")
+FUNCTION PRINTBALGEN()
+  LOCAL oRep:=REPORTE("BALANCEGEN")
 
-  oRep:SetCriterio(1,oBrBalGen:dDesde)
-  oRep:SetCriterio(2,oBrBalGen:dHasta)
+  oRep:SetCriterio(1,oBrBalGen:dHasta)
 
 RETURN .T.
 
@@ -1104,8 +1045,11 @@ FUNCTION BALCOM()
   LOCAL cCtaD  :=RGO_I1
   LOCAL cCtaH  :=RGO_F1
   LOCAL nMaxCol:=NIL,cPicture:=NIL,cTextT:=NIL,cCecod:=NIL,cCecoh:=NIL
+  LOCAL cNumEje:=EJECUTAR("GETNUMEJE",oBrBalGen:dHasta)
+  LOCAL aFecha :=EJECUTAR("GETFCHEJER",oBrBalGen:dHasta)
+  LOCAL dDesde :=aFecha[1]	
 
-RETURN EJECUTAR("BRWCOMPROBACION",oGenRep,oBrBalGen:dDesde,oBrBalGen:dHasta,nMaxCol,cPicture,cTextT,cCecod,cCecoh,cCtaD,cCtaH)
+RETURN EJECUTAR("BRWCOMPROBACION",oGenRep,dDesde,oBrBalGen:dHasta,nMaxCol,cPicture,cTextT,cCecod,cCecoh,cCtaD,cCtaH)
 
 
 FUNCTION GETCTACON()
@@ -1137,9 +1081,42 @@ FUNCTION GETCTACON()
 
 RETURN ALLTRIM(cCodCta)
 
-
-
 FUNCTION BUSCARLETRA(cLetra)
 RETURN EJECUTAR("BRWBUSCARLETRA",cLetra,oBrBalGen:oBrw,1)
+
+FUNCTION CREAR_BG(oCursor)
+  LOCAL aData:={},aLine,cField,I
+
+  DEFAULT oCursor   :=EJECUTAR("BGCALCULAR",oGenRep,RGO_C1,RGO_C2,RGO_C3,"BG",RGO_C5,RGO_C6,RGO_C7,RGO_C8,RGO_C9)
+
+  IF !ValType(oCursor)="O"
+     MensajeErr("Balance no Generado")
+     RETURN {}
+  ENDIF
+
+  oCursor:GoTop()
+
+  WHILE !oCursor:EOF()
+
+     aLine:={oCursor:CTA_CODIGO,oCursor:TITULO}
+
+     FOR I=1 TO RGO_C2
+
+       cField:="COL"+STRZERO(I,2)
+
+       IF oCursor:FieldPos(cField)>0
+          AADD(aLine,oCursor:FieldGet(cField))
+       ENDIF
+
+     NEXT I
+
+     AADD(aData,aLine)
+
+     oCursor:DbSkip()
+
+  ENDDO
+
+RETURN aData
+
 // EOF
 

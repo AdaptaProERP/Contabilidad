@@ -10,7 +10,7 @@
 
 PROCE MAIN(oGenRep,dDesde,dHasta,RGO_C3,RGO_C4,RGO_C6,RGO_I1,RGO_F1,RGO_I2,RGO_F2,cCodMon)
   LOCAL aData
-  LOCAL aNumEje:=ATABLE("SELECT EJE_NUMERO FROM DPEJERCICIOS WHERE EJE_CODSUC"+GetWhere("=",oDp:cSucursal)+" GROUP BY EJE_NUMERO ORDER BY EJE_NUMERO ")
+  LOCAL aNumEje:={}
   LOCAL cTitle :="Estado de Resultado"
   LOCAL cWhere :=NIL
   LOCAL cNumEje
@@ -34,6 +34,12 @@ PROCE MAIN(oGenRep,dDesde,dHasta,RGO_C3,RGO_C4,RGO_C6,RGO_I1,RGO_F1,RGO_I2,RGO_F
           RGO_F1:="",;
           RGO_I2:="",;
           RGO_F2:=""
+
+// ? oGenRep,dDesde,dHasta,RGO_C3,RGO_C4,RGO_C6,RGO_I1,RGO_F1,RGO_I2,RGO_F2,cCodMon
+
+  aNumEje:=ATABLE(" SELECT EJE_NUMERO FROM DPEJERCICIOS "+;
+                  " INNER JOIN DPCBTE ON CBT_CODSUC=EJE_CODSUC AND CBT_NUMEJE=EJE_NUMERO "+;
+                  " WHERE EJE_CODSUC"+GetWhere("=",oDp:cSucursal)+" GROUP BY EJE_NUMERO ORDER BY EJE_NUMERO ")
 
 
   RGO_C1:=dDesde
@@ -305,8 +311,12 @@ IF LEN(oBrBalGyP:oBrw:aCols)>6
                         {nClrText,iif( oBrw:nArrayAt%2=0, oBrBalGyP:nClrPane1,oBrBalGyP:nClrPane2 ) } }
 
 ENDIF
-//   oCol:cFooter      :=aTotal[6]
 
+  oCol:cFooter      :=FDP(oDp:nUtilidad,"999,999,999,999,999,999.99")
+
+
+   oCol:oHeaderFont:=oFontB
+   oCol:oDataFont  :=oFontB
 
    oBrBalGyP:oBrw:aCols[1]:cFooter:=" #"+LSTR(LEN(aData))
 
@@ -344,19 +354,30 @@ FUNCTION ViewDatBar()
    oBrBalGyP:oBrw:Refresh(.T.)
 
    DEFINE CURSOR oCursor HAND
-   DEFINE BUTTONBAR oBar SIZE 52-15,60-15 OF oDlg 3D CURSOR oCursor
+
+   IF !oDp:lBtnText 
+     DEFINE BUTTONBAR oBar SIZE 52-15,60-15 OF oDlg 3D CURSOR oCursor
+   ELSE 
+     DEFINE BUTTONBAR oBar SIZE oDp:nBtnWidth,oDp:nBarnHeight+6 OF oDlg 3D CURSOR oCursor 
+   ENDIF 
+
    DEFINE FONT oFont  NAME "Tahoma"   SIZE 0, -10 BOLD
 
 
  // Emanager no Incluye consulta de Vinculos
 
 /*
-   DEFINE BUTTON oBtn;
+   oBrBalGyP:oFontBtn   :=oFont    
+   oBrBalGyP:nClrPaneBar:=oDp:nGris
+   oBrBalGyP:oBrw:oLbx  :=oBrBalGyP
+
+ DEFINE BUTTON oBtn;
           OF oBar;
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\RUN.BMP";
-          ACTION oBrBalGyP:GPCALCULAR()
+          TOP PROMPT "Ejecutar"; 
+          ACTION  oBrBalGyP:GPCALCULAR()
 
    oBrBalGyP:oBtn:=oBtn:bAction
  
@@ -368,6 +389,7 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\CONTABILIDAD.BMP";
+          TOP PROMPT "Cuenta"; 
           ACTION oBrBalGyP:VERCTA()
 
    oBtn:cToolTip:="Consultar Cuentas"
@@ -377,6 +399,7 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\CONFIGURA.bmp";
+          TOP PROMPT "Configura"; 
           ACTION EJECUTAR("DPCTAUSO")
 
    oBtn:cToolTip:="Uso de las Cuentas"
@@ -387,6 +410,7 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\mayoranalitico.BMP";
+          TOP PROMPT "Mayor A."; 
           ACTION oBrBalGyP:MAYOR()
 
    oBtn:cToolTip:="Mayor Analítico"
@@ -396,6 +420,7 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\balancecomprobacion.bmp";
+          TOP PROMPT "Balance"; 
           ACTION oBrBalGyP:BALCOM()
 
    oBtn:cToolTip:="Balance de Comprobación"
@@ -405,7 +430,8 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\XBROWSE.BMP";
-          ACTION oBrBalGyP:VERBROWSE()
+          TOP PROMPT "Asientos"; 
+          ACTION  oBrBalGyP:VERBROWSE()
 
    oBtn:cToolTip:="Ver Asientos"
 
@@ -415,7 +441,8 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\XPRINT.BMP";
-          ACTION oBrBalGyP:PRINTBALGYP()
+          TOP PROMPT "Imprimir"; 
+          ACTION  oBrBalGyP:PRINTBALGYP()
 
    oBtn:cToolTip:="Imprimir Ganancias y Pérdidas"
 
@@ -425,6 +452,7 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\ZOOM.BMP";
+          TOP PROMPT "Zoom"; 
           ACTION IF(oBrBalGyP:oWnd:IsZoomed(),oBrBalGyP:oWnd:Restore(),oBrBalGyP:oWnd:Maximize())
 
    oBtn:cToolTip:="Maximizar"
@@ -435,7 +463,8 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\XFIND.BMP";
-          ACTION EJECUTAR("BRWSETFIND",oBrBalGyP:oBrw)
+          TOP PROMPT "Buscar"; 
+          ACTION  EJECUTAR("BRWSETFIND",oBrBalGyP:oBrw)
 
    oBtn:cToolTip:="Buscar"
 
@@ -445,7 +474,8 @@ FUNCTION ViewDatBar()
           FONT oFont;
           FILENAME "BITMAPS\FILTRAR.BMP";
           MENU EJECUTAR("BRBTNMENUFILTER",oBrBalGyP:oBrw,oBrBalGyP);
-          ACTION EJECUTAR("BRWSETFILTER",oBrBalGyP:oBrw)
+          TOP PROMPT "Filtrar"; 
+          ACTION  EJECUTAR("BRWSETFILTER",oBrBalGyP:oBrw)
 
    oBtn:cToolTip:="Filtrar Registros"
 
@@ -454,7 +484,8 @@ FUNCTION ViewDatBar()
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\OPTIONS.BMP",NIL,"BITMAPS\OPTIONSG.BMP";
-          ACTION EJECUTAR("BRWSETOPTIONS",oBrBalGyP:oBrw);
+          TOP PROMPT "Opciones"; 
+          ACTION  EJECUTAR("BRWSETOPTIONS",oBrBalGyP:oBrw);
           WHEN LEN(oBrBalGyP:oBrw:aArrayData)>1
 
    oBtn:cToolTip:="Filtrar según Valores Comunes"
@@ -466,7 +497,8 @@ FUNCTION ViewDatBar()
              FONT oFont;
              MENU EJECUTAR("BRBTNMENU",{"Opción1","Opción"},"oFrm");
              FILENAME "BITMAPS\MENU.BMP";
-             ACTION 1=1;
+               TOP PROMPT "Menú"; 
+              ACTION  1=1;
 
              oBtn:cToolTip:="Boton con Menu"
 
@@ -480,7 +512,8 @@ IF nWidth>300
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\REFRESH.BMP";
-          ACTION oBrBalGyP:BRWREFRESCAR()
+          TOP PROMPT "Refrescar"; 
+           ACTION  oBrBalGyP:BRWREFRESCAR()
 
    oBtn:cToolTip:="Refrescar"
 
@@ -505,7 +538,8 @@ ENDIF
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\CRYSTAL.BMP";
-          ACTION EJECUTAR("BRWTODBF",oBrBalGyP)
+          TOP PROMPT "Crystal"; 
+          ACTION  EJECUTAR("BRWTODBF",oBrBalGyP)
 
    oBtn:cToolTip:="Visualizar Mediante Crystal Report"
 */
@@ -519,7 +553,8 @@ IF .T.
             NOBORDER;
             FONT oFont;
             FILENAME "BITMAPS\EXCEL.BMP";
-            ACTION (EJECUTAR("BRWTOEXCEL",oBrBalGyP:oBrw,oBrBalGyP:cTitle,oBrBalGyP:cNombre))
+              TOP PROMPT "Excel"; 
+              ACTION  (EJECUTAR("BRWTOEXCEL",oBrBalGyP:oBrw,oBrBalGyP:cTitle,oBrBalGyP:cNombre))
 
      oBtn:cToolTip:="Exportar hacia Excel"
 
@@ -532,7 +567,8 @@ ENDIF
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\html.BMP";
-          ACTION (oBrBalGyP:HTMLHEAD(),EJECUTAR("BRWTOHTML",oBrBalGyP:oBrw,NIL,oBrBalGyP:cTitle,oBrBalGyP:aHead))
+            TOP PROMPT "Html"; 
+              ACTION  (oBrBalGyP:HTMLHEAD(),EJECUTAR("BRWTOHTML",oBrBalGyP:oBrw,NIL,oBrBalGyP:cTitle,oBrBalGyP:aHead))
 
    oBtn:cToolTip:="Generar Archivo html"
 
@@ -545,7 +581,8 @@ IF nWidth>300
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\PREVIEW.BMP";
-          ACTION (EJECUTAR("BRWPREVIEW",oBrBalGyP:oBrw))
+            TOP PROMPT "Preview"; 
+              ACTION  (EJECUTAR("BRWPREVIEW",oBrBalGyP:oBrw))
 
    oBtn:cToolTip:="Previsualización"
 
@@ -576,7 +613,8 @@ ENDIF
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\xTOP.BMP";
-          ACTION (oBrBalGyP:oBrw:GoTop(),oBrBalGyP:oBrw:Setfocus())
+            TOP PROMPT "Primero"; 
+              ACTION  (oBrBalGyP:oBrw:GoTop(),oBrBalGyP:oBrw:Setfocus())
 
 IF nWidth>800 .OR. nWidth=0
 
@@ -585,14 +623,16 @@ IF nWidth>800 .OR. nWidth=0
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\xSIG.BMP";
-          ACTION (oBrBalGyP:oBrw:PageDown(),oBrBalGyP:oBrw:Setfocus())
+            TOP PROMPT "Avance"; 
+              ACTION  (oBrBalGyP:oBrw:PageDown(),oBrBalGyP:oBrw:Setfocus())
 
   DEFINE BUTTON oBtn;
           OF oBar;
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\xANT.BMP";
-          ACTION (oBrBalGyP:oBrw:PageUp(),oBrBalGyP:oBrw:Setfocus())
+            TOP PROMPT "Anterior"; 
+              ACTION  (oBrBalGyP:oBrw:PageUp(),oBrBalGyP:oBrw:Setfocus())
 
 ENDIF
 
@@ -602,7 +642,8 @@ ENDIF
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\xFIN.BMP";
-          ACTION (oBrBalGyP:oBrw:GoBottom(),oBrBalGyP:oBrw:Setfocus())
+            TOP PROMPT "Ultimo"; 
+              ACTION  (oBrBalGyP:oBrw:GoBottom(),oBrBalGyP:oBrw:Setfocus())
 
 
 
@@ -611,7 +652,8 @@ ENDIF
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\XSALIR.BMP";
-          ACTION oBrBalGyP:Close()
+          TOP PROMPT "Cerrar"; 
+          ACTION  oBrBalGyP:Close()
 
   oBrBalGyP:oBrw:SetColor(0,oBrBalGyP:nClrPane1)
 
@@ -623,18 +665,18 @@ ENDIF
 
   oBrBalGyP:oBar:=oBar
 
-    nLin:=490
+  nLin:=490-90
 
   // Controles se Inician luego del Ultimo Boton
   nLin:=32
   AEVAL(oBar:aControls,{|o,n|nLin:=nLin+o:nWidth() })
 
-  nLin:=nLin-300
+  nLin:=nLin-460
   //
   // Campo : Periodo
   //
 
-  @ 10+35, nLin COMBOBOX oBrBalGyP:oPeriodo;
+  @ 10+35+20, nLin COMBOBOX oBrBalGyP:oPeriodo;
              VAR oBrBalGyP:cPeriodo ITEMS aPeriodos;
              SIZE 100,200;
              PIXEL;
@@ -649,7 +691,7 @@ ENDIF
   oBrBalGyP:oPeriodo:ForWhen(.T.)
 
 
-  @ 10+35, nLin+103 BUTTON oBrBalGyP:oBtn PROMPT " < " SIZE 27,24;
+  @ 10+35+20, nLin+103 BUTTON oBrBalGyP:oBtn PROMPT " < " SIZE 27,24;
                  FONT oFont;
                  PIXEL;
                  OF oBar;
@@ -658,7 +700,7 @@ ENDIF
                 WHEN oBrBalGyP:lWhen 
 
 
-  @ 10+35, nLin+130 BUTTON oBrBalGyP:oBtn PROMPT " > " SIZE 27,24;
+  @ 10+35+20, nLin+130 BUTTON oBrBalGyP:oBtn PROMPT " > " SIZE 27,24;
                  FONT oFont;
                  PIXEL;
                  OF oBar;
@@ -668,7 +710,7 @@ ENDIF
 
  
 
-  @ 10+35, nLin+170 BMPGET oBrBalGyP:oDesde  VAR oBrBalGyP:dDesde;
+  @ 10+35+20, nLin+170 BMPGET oBrBalGyP:oDesde  VAR oBrBalGyP:dDesde;
                 PICTURE "99/99/9999";
                 PIXEL;
                 NAME "BITMAPS\Calendar.bmp";
@@ -680,7 +722,7 @@ ENDIF
 
    oBrBalGyP:oDesde:cToolTip:="F6: Calendario"
 
-  @ 10+35, nLin+252 BMPGET oBrBalGyP:oHasta  VAR oBrBalGyP:dHasta;
+  @ 10+35+20, nLin+252 BMPGET oBrBalGyP:oHasta  VAR oBrBalGyP:dHasta;
                 PICTURE "99/99/9999";
                 PIXEL;
                 NAME "BITMAPS\Calendar.bmp";
@@ -692,7 +734,7 @@ ENDIF
 
    oBrBalGyP:oHasta:cToolTip:="F6: Calendario"
 
-   @ 10+35, nLin+335 BUTTON oBrBalGyP:oBtn PROMPT " > " SIZE 27,24;
+   @ 10+35+20, nLin+335 BUTTON oBrBalGyP:oBtn PROMPT " > " SIZE 27,24;
                FONT oFont;
                OF oBar;
                PIXEL;
@@ -703,7 +745,7 @@ ENDIF
   AEVAL(oBar:aControls,{|o|o:ForWhen(.T.)})
 
 
-  @ 10+35,nLin+325+50 COMBOBOX oBrBalGyP:oNumEje;
+  @ 10+35+20,nLin+325+50 COMBOBOX oBrBalGyP:oNumEje;
                    VAR oBrBalGyP:cNumEje;
                    ITEMS oBrBalGyP:aNumEje;
                    WHEN LEN(oBrBalGyP:aNumEje)>1;
@@ -728,15 +770,15 @@ ENDIF
   AADD(oBrBalGyP:aBalance," ")
 
 
-  oBar:SetSize(NIL,80,.T.)
+  oBar:SetSize(NIL,80+15,.T.)
 
   FOR I=1 TO LEN(oBrBalGyP:aBalance)
 
-     @ 44,20+(35*(I-1)) BUTTON oBtn PROMPT oBrBalGyP:aBalance[I] SIZE 27,24;
-                        FONT oFont;
-                        OF oBar;
-                        PIXEL;
-                        ACTION (1=1)
+     @ 44+20,20+(35*(I-1))+0 BUTTON oBtn PROMPT oBrBalGyP:aBalance[I] SIZE 27,24;
+                           FONT oFont;
+                           OF oBar;
+                           PIXEL;
+                           ACTION (1=1)
 
      oBtn:bAction:=BloqueCod([oBrBalGyP:BUSCARLETRA(]+GetWhere("",oBrBalGyP:aBalance[I])+[)])
      oBtn:CARGO:=oBrBalGyP:aBalance[I]

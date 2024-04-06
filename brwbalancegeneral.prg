@@ -350,6 +350,15 @@ FUNCTION ViewDatBar()
           OF oBar;
           NOBORDER;
           FONT oFont;
+          FILENAME "BITMAPS\edodegananciayperdida.bmp";
+          TOP PROMPT "Resultado"; 
+          ACTION oBrBalGen:VER_GYP()
+
+
+   DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
           FILENAME "BITMAPS\mayoranalitico.BMP";
           TOP PROMPT "Mayor A."; 
           ACTION oBrBalGen:MAYOR()
@@ -432,48 +441,7 @@ FUNCTION ViewDatBar()
    oBtn:cToolTip:="Filtrar según Valores Comunes"
 
 
-IF nWidth>300
-
-   DEFINE BUTTON oBtn;
-          OF oBar;
-          NOBORDER;
-          FONT oFont;
-          FILENAME "BITMAPS\REFRESH.BMP";
-          TOP PROMPT "Refrescar"; 
-           ACTION  oBrBalGen:BRWREFRESCAR()
-
-   oBtn:cToolTip:="Refrescar"
-
-ENDIF
-
-/*
-  DEFINE BUTTON oBtn;
-          OF oBar;
-          NOBORDER;
-          FONT oFont;
-          FILENAME "BITMAPS\cbtediferido.bmp";
-          MENU EJECUTAR("BRBTNMENU",{"Según Partida","Visualizar Asientos"},"oBrBalGen");
-          ACTION oBrBalGen:EDITCBTE()
-
-  oBtn:cToolTip:="Editar Comprobante"
-
-
-
-
-   DEFINE BUTTON oBtn;
-          OF oBar;
-          NOBORDER;
-          FONT oFont;
-          FILENAME "BITMAPS\CRYSTAL.BMP";
-          TOP PROMPT "Crystal"; 
-          ACTION  EJECUTAR("BRWTODBF",oBrBalGen)
-
-   oBtn:cToolTip:="Visualizar Mediante Crystal Report"
-*/
-
 IF .T.
-// nWidth>400 
-
  
      DEFINE BUTTON oBtn;
             OF oBar;
@@ -494,8 +462,8 @@ ENDIF
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\html.BMP";
-            TOP PROMPT "Html"; 
-              ACTION  (oBrBalGen:HTMLHEAD(),EJECUTAR("BRWTOHTML",oBrBalGen:oBrw,NIL,oBrBalGen:cTitle,oBrBalGen:aHead))
+          TOP PROMPT "Html"; 
+          ACTION  (oBrBalGen:HTMLHEAD(),EJECUTAR("BRWTOHTML",oBrBalGen:oBrw,NIL,oBrBalGen:cTitle,oBrBalGen:aHead))
 
    oBtn:cToolTip:="Generar Archivo html"
 
@@ -508,8 +476,8 @@ IF nWidth>300
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\PREVIEW.BMP";
-            TOP PROMPT "Preview"; 
-              ACTION  (EJECUTAR("BRWPREVIEW",oBrBalGen:oBrw))
+          TOP PROMPT "Preview"; 
+          ACTION  (EJECUTAR("BRWPREVIEW",oBrBalGen:oBrw))
 
    oBtn:cToolTip:="Previsualización"
 
@@ -534,7 +502,6 @@ ENDIF
 
 
 
-
    DEFINE BUTTON oBtn;
           OF oBar;
           NOBORDER;
@@ -550,16 +517,16 @@ IF nWidth>800 .OR. nWidth=0
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\xSIG.BMP";
-            TOP PROMPT "Avance"; 
-              ACTION  (oBrBalGen:oBrw:PageDown(),oBrBalGen:oBrw:Setfocus())
+          TOP PROMPT "Avance"; 
+          ACTION  (oBrBalGen:oBrw:PageDown(),oBrBalGen:oBrw:Setfocus())
 
   DEFINE BUTTON oBtn;
           OF oBar;
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\xANT.BMP";
-            TOP PROMPT "Anterior"; 
-              ACTION  (oBrBalGen:oBrw:PageUp(),oBrBalGen:oBrw:Setfocus())
+          TOP PROMPT "Anterior"; 
+          ACTION  (oBrBalGen:oBrw:PageUp(),oBrBalGen:oBrw:Setfocus())
 
 ENDIF
 
@@ -569,10 +536,8 @@ ENDIF
           NOBORDER;
           FONT oFont;
           FILENAME "BITMAPS\xFIN.BMP";
-            TOP PROMPT "Ultimo"; 
-              ACTION  (oBrBalGen:oBrw:GoBottom(),oBrBalGen:oBrw:Setfocus())
-
-
+          TOP PROMPT "Ultimo"; 
+          ACTION  (oBrBalGen:oBrw:GoBottom(),oBrBalGen:oBrw:Setfocus())
 
    DEFINE BUTTON oBtn;
           OF oBar;
@@ -603,76 +568,6 @@ ENDIF
   // Campo : Periodo
   //
 
-IF .F.
-
-  @ 10+35+20, nLin COMBOBOX oBrBalGen:oPeriodo;
-             VAR oBrBalGen:cPeriodo ITEMS aPeriodos;
-             SIZE 100,200;
-             PIXEL;
-             OF oBar;
-             FONT oFont;
-             ON CHANGE oBrBalGen:LEEFECHAS();
-             WHEN oBrBalGen:lWhen 
-
-  ComboIni(oBrBalGen:oPeriodo )
-
-//oBrBalGen:oPeriodo:bWhen:={||.F.}
-  oBrBalGen:oPeriodo:ForWhen(.T.)
-
-
-  @ 10+35+20, nLin+103 BUTTON oBrBalGen:oBtn PROMPT " < " SIZE 27,24;
-                 FONT oFont;
-                 PIXEL;
-                 OF oBar;
-                 ACTION (EJECUTAR("PERIODOMAS",oBrBalGen:oPeriodo:nAt,oBrBalGen:oDesde,oBrBalGen:oHasta,-1),;
-                         oBrBalGen:LEEFECHAS());
-                WHEN oBrBalGen:lWhen 
-
-
-  @ 10+35+20, nLin+130 BUTTON oBrBalGen:oBtn PROMPT " > " SIZE 27,24;
-                 FONT oFont;
-                 PIXEL;
-                 OF oBar;
-                 ACTION (EJECUTAR("PERIODOMAS",oBrBalGen:oPeriodo:nAt,oBrBalGen:oDesde,oBrBalGen:oHasta,+1),;
-                         oBrBalGen:LEEFECHAS());
-                WHEN oBrBalGen:lWhen 
-
- 
-
-  @ 10+35+20, nLin+170 BMPGET oBrBalGen:oDesde  VAR oBrBalGen:dDesde;
-                PICTURE "99/99/9999";
-                PIXEL;
-                NAME "BITMAPS\Calendar.bmp";
-                ACTION LbxDate(oBrBalGen:oDesde ,oBrBalGen:dDesde);
-                SIZE 76,24;
-                OF   oBar;
-                WHEN oBrBalGen:oPeriodo:nAt=LEN(oBrBalGen:oPeriodo:aItems) .AND. oBrBalGen:lWhen ;
-                FONT oFont
-
-   oBrBalGen:oDesde:cToolTip:="F6: Calendario"
-
-  @ 10+35+20, nLin+252 BMPGET oBrBalGen:oHasta  VAR oBrBalGen:dHasta;
-                PICTURE "99/99/9999";
-                PIXEL;
-                NAME "BITMAPS\Calendar.bmp";
-                ACTION LbxDate(oBrBalGen:oHasta,oBrBalGen:dHasta);
-                SIZE 80,23;
-                WHEN oBrBalGen:oPeriodo:nAt=LEN(oBrBalGen:oPeriodo:aItems) .AND. oBrBalGen:lWhen ;
-                OF oBar;
-                FONT oFont
-
-   oBrBalGen:oHasta:cToolTip:="F6: Calendario"
-
-   @ 10+35+20, nLin+335 BUTTON oBrBalGen:oBtn PROMPT " > " SIZE 27,24;
-               FONT oFont;
-               OF oBar;
-               PIXEL;
-               WHEN oBrBalGen:oPeriodo:nAt=LEN(oBrBalGen:oPeriodo:aItems);
-               ACTION oBrBalGen:HACERWHERE(oBrBalGen:dDesde,oBrBalGen:dHasta,oBrBalGen:cWhere,.T.);
-               WHEN oBrBalGen:lWhen
-
-ELSE
-
   @ 10+35+20, nLin+252 BMPGET oBrBalGen:oHasta  VAR oBrBalGen:dHasta;
                 PICTURE "99/99/9999";
                 PIXEL;
@@ -692,9 +587,6 @@ ELSE
                WHEN .T.;
                ACTION oBrBalGen:HACERWHERE(oBrBalGen:dDesde,oBrBalGen:dHasta,oBrBalGen:cWhere,.T.);
                WHEN oBrBalGen:lWhen
-
-
-ENDIF
 
   AEVAL(oBar:aControls,{|o|o:ForWhen(.T.)})
 
@@ -759,46 +651,6 @@ FUNCTION RUNCLICK()
 RETURN .T.
 
 
-FUNCTION LEEFECHAS()
-  LOCAL nPeriodo:=oBrBalGen:oPeriodo:nAt,cWhere,nAt,cAno,bAction:=oBrBalGen:oNumEje:bAction
-
-  oBrBalGen:nPeriodo:=nPeriodo
-
-  IF oBrBalGen:oPeriodo:nAt=LEN(oBrBalGen:oPeriodo:aItems)
-
-     oBrBalGen:oDesde:ForWhen(.T.)
-     oBrBalGen:oHasta:ForWhen(.T.)
-     oBrBalGen:oBtn  :ForWhen(.T.)
-
-     DPFOCUS(oBrBalGen:oDesde)
-
-  ELSE
-
-     oBrBalGen:aFechas:=EJECUTAR("DPDIARIOGET",nPeriodo,oBrBalGen:dDesde,oBrBalGen:dDesde)
-
-     oBrBalGen:oDesde:VarPut(oBrBalGen:aFechas[1] , .T. )
-     oBrBalGen:oHasta:VarPut(oBrBalGen:aFechas[2] , .T. )
-
-     oBrBalGen:dDesde:=oBrBalGen:aFechas[1]
-     oBrBalGen:dHasta:=oBrBalGen:aFechas[2]
-
-  ENDIF
-
-  cAno:=STRZERO(YEAR(oBrBalGen:dDesde),4)
-  nAt :=ASCAN(oBrBalGen:aNumEje,cAno)
-
-  IF nAt>0 
-     oBrBalGen:oNumEje:bAction:={||.T.}
-     oBrBalGen:oNumEje:Select(nAt)
-     oBrBalGen:oNumEje:bAction:=bAction
-  ENDIF
-
-  oBrBalGen:HACERWHERE(oBrBalGen:dDesde,oBrBalGen:dHasta)
-
-  oBrBalGen:SAVEPERIODO()
-
-RETURN .T.
-
 
 FUNCTION HACERWHERE(dDesde,dHasta,cWhere_,lRun)
    LOCAL cWhere:=""
@@ -810,15 +662,6 @@ FUNCTION HACERWHERE(dDesde,dHasta,cWhere_,lRun)
    oBrBalGen:HACERBALANCE(dDesde,dHasta,oBrBalGen)
 
 RETURN cWhere
-
-FUNCTION SAVEPERIODO()
-  LOCAL cFileMem:="USER\BRWBALANCEGENERAL.MEM",V_nPeriodo:=oBrBalGen:nPeriodo
-  LOCAL V_dDesde:=oBrBalGen:dDesde
-  LOCAL V_dHasta:=oBrBalGen:dHasta
-
-  SAVE TO (cFileMem) ALL LIKE "V_*"
-
-RETURN .T.
 
 /*
 // Permite Crear Filtros para las Búquedas
@@ -833,95 +676,20 @@ RETURN .T.
 FUNCTION BRWCHANGE()
 RETURN NIL
 
-/*
-// Refrescar Browse
-*/
-FUNCTION BRWREFRESCAR()
-    LOCAL cWhere
-
-
-    IF Type("oBrBalGen")="O" .AND. oBrBalGen:oWnd:hWnd>0
-
-      cWhere:=" "+IIF(!Empty(oBrBalGen:cWhere_),oBrBalGen:cWhere_,oBrBalGen:cWhere)
-      cWhere:=STRTRAN(cWhere," WHERE ","")
-
-
-      oBrBalGen:LEERDATA(oBrBalGen:cWhere_,oBrBalGen:oBrw,oBrBalGen:cServer)
-      oBrBalGen:oWnd:Show()
-      oBrBalGen:oWnd:Restore()
-
-    ENDIF
-
-RETURN NIL
-
-FUNCTION BTNMENU(nOption,cOption)
-
-   IF nOption=1 .AND. "Según"$cOption
-      RETURN oBrBalGen:EDITCBTE(.T.,.F.)
-   ENDIF
-
-   IF nOption=2 .AND. "Visua"$cOption
-      RETURN oBrBalGen:EDITCBTE(.T.,.T.)
-   ENDIF
-
-
-RETURN .T.
-
 FUNCTION HTMLHEAD()
 
    oBrBalGen:aHead:=EJECUTAR("HTMLHEAD",oBrBalGen)
 
 RETURN
 
-/*
-// Visualizar Asientos
-*/
-FUNCTION EDITCBTE(lNumPar,lView)
-  LOCAL cActual
-  LOCAL cTipDoc:=oBrBalGen:oBrw:aArrayData[oBrBalGen:oBrw:nArrayAt,1]
-  LOCAL cCodigo:=oBrBalGen:oBrw:aArrayData[oBrBalGen:oBrw:nArrayAt,2]
-  LOCAL cNumero:=oBrBalGen:oBrw:aArrayData[oBrBalGen:oBrw:nArrayAt,3]
-  LOCAL dFecha :=oBrBalGen:oBrw:aArrayData[oBrBalGen:oBrw:nArrayAt,5]
-  LOCAL cWhereGrid
-
-  DEFAULT lNumPar:=.F.,;
-          lView  :=.F.
-
-  oDp:dFchCbt:=CTOD("")
-
-  cActual:=EJECUTAR("DPDOCVIEWCON",oDp:cSucursal,cTipDoc,cCodigo,cNumero,"D",.F.,lView)
-
-  IF lView
-    RETURN .T.
-  ENDIF
-
-  dFecha :=IF(Empty(oDp:dFchCbt),dFecha,oDp:dFchCbt)
-  cNumero:=oDp:cNumCbt
-
-// ? oDp:dFchCbt,"oDp:dFchCbt",oDp:cNumCbt
- 
-
-  IF lNumPar
-    cWhereGrid:="MOC_NUMPAR"+GetWhere("=",oBrBalGen:oBrw:aArrayData[oBrBalGen:oBrw:nArrayAt,18])
-//+" AND "+;
-//                "MOC_DOCUME"+GetWhere("=",oBrBalGen:oBrw:aArrayData[oBrBalGen:oBrw:nArrayAt,03])
-  ENDIF
-
-  EJECUTAR("DPCBTE",cActual,cNumero,dFecha,.F.,NIL,cWhereGrid)
-
-RETURN .T.
-
-
 FUNCTION BRWRESTOREPAR()
 RETURN EJECUTAR("BRWRESTOREPAR",oBrBalGen)
-
 
 FUNCTION CAMBIAEJERCICIO()
 
   oBrBalGen:dDesde:=SQLGET("DPEJERCICIOS","EJE_DESDE,EJE_HASTA","EJE_CODSUC"+GetWhere("=",oBrBalGen:cCodSuc)+" AND EJE_NUMERO"+GetWhere("=",oBrBalGen:cNumEje))
   oBrBalGen:dHasta:=DPSQLROW(2,CTOD(""))
 
-//  oBrBalGen:oDesde:Refresh(.T.)
   oBrBalGen:oHasta:Refresh(.T.)
 
   oDp:oCursor:=NIL
@@ -1075,10 +843,6 @@ FUNCTION GETCTACON()
      cCodCta:=aLine[1]
   ENDIF
 
-//  IF !Empty(oBrMayor:RGO_I1) .AND. Empty(cCodCta)
-//   cCodCta:=oBrMayor:RGO_I1
-//ENDIF
-
 RETURN ALLTRIM(cCodCta)
 
 FUNCTION BUSCARLETRA(cLetra)
@@ -1118,5 +882,12 @@ FUNCTION CREAR_BG(oCursor)
 
 RETURN aData
 
-// EOF
+FUNCTION VER_GYP()
+  LOCAL oGenRep:=NIL
+  LOCAL aFecha :=EJECUTAR("GETFCHEJER",oBrBalGen:dHasta)
+  LOCAL dDesde :=aFecha[1]	
 
+  EJECUTAR("BRWGANANCIAYP",oGenRep,dDesde,oBrBalGen:dHasta) 
+
+RETURN .T.
+// EOF

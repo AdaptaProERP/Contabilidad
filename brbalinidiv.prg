@@ -1286,10 +1286,12 @@ RETURN .T.
 
 
 FUNCTION BUSCARLETRA(cLetra)
-   LOCAL oBrw  :=oBALINIDIV:oBrw
-   LOCAL oCol  :=oBALINIDIV:oBrw:aCols[1]
-   LOCAL uValue:=IF(Empty(cLetra),"","%")+cLetra,nLastKey,lExact
-   LOCAL cWhere:=NIL
+   LOCAL oBrw   :=oBALINIDIV:oBrw
+   LOCAL oCol   :=oBALINIDIV:oBrw:aCols[1]
+   LOCAL uValue :=IF(Empty(cLetra),"","%")+cLetra,nLastKey,lExact
+   LOCAL cWhere :=NIL
+   LOCAL nColSel:=oBrw:nColSel
+
 
    // Recalcular 
    oBrw:aData:=oBALINIDIV:LEERDATA(cWhere,NIL,NIL,NIL,oBALINIDIV:nValCam,oBALINIDIV:dFecha)
@@ -1302,6 +1304,9 @@ FUNCTION BUSCARLETRA(cLetra)
    oBrw:nColSel:=1
   
    EJECUTAR("BRWFILTER",oCol,uValue,nLastKey,lExact)
+
+   oBrw:nColSel:=nColSel
+
 
 RETURN .T.
 /*

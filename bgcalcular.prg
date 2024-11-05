@@ -31,7 +31,6 @@ PROCE MAIN(oGenRep,dHasta,nMaxCol,cPicture,cTipBal,cTextT,cPasCap,cCodSuc,cCenCo
 
    DEFAULT oDp:lPrecontab:=.F.
 
-
    IF Empty(cCtaUtil) .OR. cCtaUtil=oDp:cCtaIndef
 
       MsgMemo("Balance Requiere Cuenta de Utilidad ","Validación del Balance")
@@ -62,13 +61,12 @@ PROCE MAIN(oGenRep,dHasta,nMaxCol,cPicture,cTipBal,cTextT,cPasCap,cCodSuc,cCenCo
    IF TYPE("RGO_C12")="C" .AND. !Empty(RGO_C12)
       cCodDep:=RGO_C12
    ENDIF
-  
 
    nMaxCol :=CTOO(nMaxCol,"N")
    nMaxCol :=MIN(nMaxCol ,5+1)
    cPicture:=ALLTRIM(cPicture)
    cTextT  :=ALLTRIM(cTextT)+" "
-   nUtil   :=GETUTILIDAD()
+   nUtil   :=GETUTILIDAD(RGO_C7)
 
 // ? nUtil,"UTILIDAD"
 
@@ -143,10 +141,20 @@ PROCE MAIN(oGenRep,dHasta,nMaxCol,cPicture,cTipBal,cTextT,cPasCap,cCodSuc,cCenCo
    // 27/04/2021, si existe balance inicial, no lee los datos anteriores
 
    cNumEje:=EJECUTAR("GETNUMEJE",dHasta)
-   dDesde :=SQLGET("DPEJERCICIOS","EJE_DESDE,EJE_HASTA,EJE_CTAMOD","EJE_CODSUC"+GetWhere("=",cCodSuc)+" AND "+;
-                                                                     "EJE_NUMERO"+GetWhere("=",cNumEje))
 
-   IF COUNT("DPASIENTOS","MOC_CODSUC"+GetWhere("=",cCodSuc)+" AND MOC_FECHA"+GetWhere("=",dDesde)+" AND MOC_ORIGEN"+GetWhere("=","INI"))=0
+   IF !Empty(cCodSuc)
+
+      dDesde :=SQLGET("DPEJERCICIOS","EJE_DESDE,EJE_HASTA,EJE_CTAMOD","EJE_CODSUC"+GetWhere("=",cCodSuc)+" AND "+;
+                                                                      "EJE_NUMERO"+GetWhere("=",cNumEje))
+   ELSE
+
+      dDesde :=SQLGET("DPEJERCICIOS","EJE_DESDE,EJE_HASTA,EJE_CTAMOD","EJE_NUMERO"+GetWhere("=",cNumEje))
+
+   ENDIF
+
+// ? cCodSuc,"cCodSuc"
+
+   IF !Empty(cCodSuc) .AND. COUNT("DPASIENTOS","MOC_CODSUC"+GetWhere("=",cCodSuc)+" AND MOC_FECHA"+GetWhere("=",dDesde)+" AND MOC_ORIGEN"+GetWhere("=","INI"))=0
     // Empty(cCodMon)
 
      cWhere:=cWhere +IIF(Empty(cWhere),""," AND ")+" NOT (MOC_ORIGEN"+GetWhere("=","FIN")+" OR MOC_ORIGEN"+GetWhere("=","INI")+")"
@@ -200,8 +208,8 @@ PROCE MAIN(oGenRep,dHasta,nMaxCol,cPicture,cTipBal,cTextT,cPasCap,cCodSuc,cCenCo
 
    oTable:=OpenTable(cSql,.T.)
 
-//   oTable:Browse()
-//	 ? CLPCOPY(oTable:cSql)
+// oTable:Browse()
+// ? CLPCOPY(oTable:cSql)
 
    DPWRITE("TEMP\BGCALCULAR.SQL",cSql)
 
@@ -593,17 +601,17 @@ FUNCTION HacerBal(oMeter,oText)
 
                       ENDDO
 
-                      TOTALCUENTA(7,nPos4)
+                      TOTALCUENTA(7,nPos7) // nPos4) 28/10/2024
           
                       // oCuentas:DbSkip()
 
                    ENDDO
 
-                   TOTALCUENTA(6,nPos4)
+                   TOTALCUENTA(6,nPos6) // nPos4) 28/10/2024
               
                  ENDDO
 
-                 TOTALCUENTA(5,nPos4)
+                 TOTALCUENTA(5,nPos5) // nPos4) 28/10/2024
 
                ENDDO
 
@@ -904,8 +912,13 @@ FUNCTION CTAUTILIDAD()
 
    cWhere:=cWhere+"MOC_CUENTA"+GetWhere("=",cCtaUtil)
 
+   // 05/11/2024 Balance Consolidado todas las sucursales
+
+   IF !Empty(RGO_C7)
+      cWhere:="MOC_CODSUC"+GetWhere("=",RGO_C7)
+   ENDIF
+
    cWhere:="("+cWhere+" AND MOC_FECHA"+GetWhere("<=",dHasta)+")"+;
-           " AND MOC_CODSUC"+GetWhere("=",RGO_C7)+;
            " AND MOC_ACTUAL<>'N'"
 
    IF !Empty(cCenCos) 

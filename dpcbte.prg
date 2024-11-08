@@ -592,14 +592,19 @@ PROCE MAIN(cActual,cNumero,dFecha,lView,cScope,cWhereG,cCodDep,cCenCos,cNumEje,c
 
   IF oDefCol:MOC_MTOCRE_ACTIVO
 
-    // Descripción
-    oCol:=oGrid:AddCol("MOC_DESCRI")
-    oCol:cTitle:=oDefCol:MOC_DESCRI_TITLE // "Descripción"  
-    oCol:bWhen :="!Empty(oGrid:MOC_CUENTA)"
-    oCol:nWidth:=80+iif(oDp:lCenCos,-80,0)+IIF(Empty(oDp:cModeVideo),0,90)
+    // Campo Descripción debe estar ACTIVO
 
-    oCol:nWidth :=oCol:nWidth+IF(oDp:nDifW>0,oDp:nDifW-300,0)
-    oCol:lRepeat:=oDefCol:MOC_DESCRI_REPITE  // cambio de F a T Ag TJ
+    IF oDefCol:MOC_DESCRI_ACTIVO
+
+      oCol:=oGrid:AddCol("MOC_DESCRI")
+      oCol:cTitle:=oDefCol:MOC_DESCRI_TITLE // "Descripción"  
+      oCol:bWhen :="!Empty(oGrid:MOC_CUENTA)"
+      oCol:nWidth:=80+iif(oDp:lCenCos,-80,0)+IIF(Empty(oDp:cModeVideo),0,90)
+
+      oCol:nWidth :=oCol:nWidth+IF(oDp:nDifW>0,oDp:nDifW-300,0)
+      oCol:lRepeat:=oDefCol:MOC_DESCRI_REPITE  // cambio de F a T Ag TJ
+
+    ENDIF
 
     // Monto
     oCol:=oGrid:AddCol("MOC_MONTO")
@@ -757,6 +762,8 @@ ENDIF
 // ? oCbte:oGrid:oBrw:nTop+oCbte:oGrid:oBrw:nHeight
 // ? oCbte:oGrid:aBtn[1,1]:nTop(),oCbte:oGrid:aBtn[1,1]:nLeft()
 
+  oCbte:oGrid:oBrw:lAllowRowSizing:=.T. //06/11/2024
+  oCbte:oGrid:oBrw:lAllowColSwapping:=.T. // 06/11/2024
 RETURN .T.
 
 FUNCTION INICIO()

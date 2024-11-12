@@ -32,7 +32,7 @@ PROCE MAIN(lRun)
 
   cCodigo:="DPCTAAXI_MENSUAL"
   cDescri:="Ajuste por Inflación Mensual"
-
+/*
   cSql:=[ SELECT ]+CRLF+;
         [ MOC_CODSUC AS AME_CODSUC,]+CRLF+;
         [ MOC_CTAMOD AS AME_CTAMOD,]+CRLF+;
@@ -58,7 +58,7 @@ PROCE MAIN(lRun)
         [ LEFT JOIN ]+UPPER(oDp:cDsnConfig)+[.dpipc ON YEAR(EJE_DESDE)=IPC_ANO AND MONTH(EJE_DESDE)=IPC_MES ]+CRLF+;
         [ GROUP BY MOC_CODSUC,MOC_CTAMOD,MOC_CUENTA,FCH_ANO,FCH_MES ]+CRLF+;
         [ ORDER BY MOC_CODSUC,MOC_CTAMOD,MOC_CUENTA,FCH_ANO,FCH_MES ]
-
+*/
 
    cSql:=[ SELECT  ]+CRLF+;
          [ CTA_CODSUC AS AME_CODSUC,]+CRLF+;

@@ -16,13 +16,13 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
    LOCAL dDesde   :=oDp:dFchInicio // FCHINIMES(oDp:dFecha)
    LOCAL dHasta   :=oDp:dFchCierre // FCHFINMES(oDp:dFecha)
    LOCAL aPeriodos:=ACLONE(oDp:aPeriodos)
-   LOCAL cFileMem :="USER\ADDON_CDC.MEM",V_nPeriodo:=10,nPeriodo,aFechas:={}
+   LOCAL cFileMem :="USER\ADDON_CDC.MEM",V_nPeriodo:=10,nPeriodo,aFechas:={},aTotal:={}
    LOCAL V_dDesde :=CTOD("")
    LOCAL V_dHasta :=CTOD("")
    LOCAL oDb      :=OpenOdbc(oDp:cDsnData)
    LOCAL aData    :={} // EJECUTAR("DBFVIEWARRAY","DATADBF\DPLINK.DBF",NIL,.F.)
-   LOCAL aMenu    :=EJECUTAR("DBFVIEWARRAY","DATADBF\DPMENU.DBF",NIL,.F.)
-   LOCAL dFecha   :=oDp:dFecha
+   LOCAL aDataFis :={} // EJECUTAR("DBFVIEWARRAY","DATADBF\DPMENU.DBF",NIL,.F.)
+   LOCAL dFecha   :=oDp:dFecha,cServer,cWhere
 
    SQLDELETE("DPRIF","RIF_ID"+GetWhere("=",""))
 
@@ -83,9 +83,11 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
 
    oData:End(.F.)
 
-   aData:=EJECUTAR("CONTAB_DEBERES",cCodSuc,oDp:dFechaIni,dFecha)
+   cWhere:=NIL
 
+   aDataFis:=LEERDATAFIS(HACERWHEREFIS(dDesde,dHasta,cWhere),NIL,cServer)
 
+   aData   :=EJECUTAR("CONTAB_DEBERES",cCodSuc,oDp:dFechaIni,dFecha)
 
    DEFINE FONT oFont    NAME "Tahoma" SIZE 0,-12 BOLD
    DEFINE FONT oFontB   NAME "Tahoma" SIZE 0,-14 BOLD
@@ -113,6 +115,7 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
    oCDCADD:cCenCos   :=cCenCos
    oCDCADD:cCodCaj   :=cCodCaj
    oCDCADD:SetFunction("MDISETPROCE")
+   oCDCADD:cWhereQry :=NIL
 
    oCDCADD:nAltoBrw  :=100+100+08
    oCDCADD:nAnchoSpl1:=120+40
@@ -282,7 +285,250 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
 
  
    oCDCADD:oBrw3:=TXBrowse():New(oCDCADD:oWnd)
-   oCDCADD:oBrw3:SetArray( aBotBar, .F. )
+   oCDCADD:oBrw3:SetArray( aDataFis, .F. )
+
+   oCALFISDET:dFchIni  :=CTOD("")
+   oCALFISDET:dFchFin  :=CTOD("")
+
+   oCDCADD:oBrw3:SetFont(oFont)
+
+   oCDCADD:oBrw3:lFooter     := .T.
+   oCDCADD:oBrw3:lHScroll    := .T.
+   oCDCADD:oBrw3:nHeaderLines:= 2
+   oCDCADD:oBrw3:nDataLines  := 1
+   oCDCADD:oBrw3:nFooterLines:= 1
+
+   oCALFISDET:aData            :=ACLONE(aData)
+   oCALFISDET:nClrText :=0
+   oCALFISDET:nClrPane1:=16774120
+   oCALFISDET:nClrPane2:=16771797
+
+   AEVAL(oCDCADD:oBrw3:aCols,{|oCol|oCol:oHeaderFont:=oFontB})
+
+   oCol:=oCDCADD:oBrw3:aCols[1]
+   oCol:cHeader      :='Fecha'+CRLF+'Actividad'
+   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+   oCol:nWidth       := 70
+
+   oCol:=oCDCADD:oBrw3:aCols[2]
+   oCol:cHeader      :='Mes'
+   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+   oCol:nWidth       := 32
+
+   oCol:=oCDCADD:oBrw3:aCols[3]
+   oCol:cHeader      :='Día'
+   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+   oCol:nWidth       := 32
+
+   oCol:=oCDCADD:oBrw3:aCols[4]
+   oCol:cHeader      :='Tipo'+CRLF+'Doc.'
+   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+   oCol:nWidth       := 35
+
+  oCol:bClrStd      := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw3,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
+                                       nClrText:=oBrw:aArrayData[oBrw:nArrayAt,17],;
+                                       nClrText:=IF(aData[23]>0 .AND. nClrText=0,aData[23],oBrw:aArrayData[oBrw:nArrayAt,17]),;
+                                      {nClrText,iif( oBrw:nArrayAt%2=0, oCALFISDET:nClrPane1, oCALFISDET:nClrPane2 ) } }
+
+
+  oCol:=oCDCADD:oBrw3:aCols[5]
+  oCol:cHeader      :='Descripción'
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 170
+
+
+  oCol:bClrStd      := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw3,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
+                                       nClrText:=oBrw:aArrayData[oBrw:nArrayAt,17],;
+                                       nClrText:=IF(aData[23]>0 .AND. nClrText=0,aData[23],oBrw:aArrayData[oBrw:nArrayAt,17]),;
+                                      {nClrText,iif( oBrw:nArrayAt%2=0, oCALFISDET:nClrPane1, oCALFISDET:nClrPane2 ) } }
+
+  oCol:=oCDCADD:oBrw3:aCols[6]
+  oCol:cHeader      :='Referencia'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 80
+
+  oCol:bClrStd      := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw3,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
+                                       nClrText:=oBrw:aArrayData[oBrw:nArrayAt,17],;
+                                       nClrText:=IF(aData[23]>0 .AND. nClrText=0,aData[23],oBrw:aArrayData[oBrw:nArrayAt,17]),;
+                                      {nClrText,iif( oBrw:nArrayAt%2=0, oCALFISDET:nClrPane1, oCALFISDET:nClrPane2 ) } }
+
+
+
+  oCol:=oCDCADD:oBrw3:aCols[7]
+  oCol:cHeader      :='Fecha'+CRLF+'Registro'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 70
+
+
+  oCol:=oCDCADD:oBrw3:aCols[8]
+  oCol:cHeader      :='Monto'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 120
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:cFooter      :=FDP(aTotal[8],'9,999,999,999,999.99')
+
+  oCol:cEditPicture :='9,999,999,999,999.99'
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,8],;
+                              oCol   := oCDCADD:oBrw3:aCols[8],;
+                              FDP(nMonto,oCol:cEditPicture)}
+
+
+  oCol:=oCDCADD:oBrw3:aCols[9]
+  oCol:cHeader      :='Dias'+CRLF+'Reg.'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 40
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,9],FDP(nMonto,'9999999')}
+
+  oCol:=oCDCADD:oBrw3:aCols[10]
+  oCol:cHeader      :='Estatus'+CRLF+'Registro'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       :=90
+
+  oCol:=oCDCADD:oBrw3:aCols[11]
+  oCol:cHeader      :='Fecha'+CRLF+'Pago'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 70
+
+  oCol:=oCDCADD:oBrw3:aCols[12]
+  oCol:cHeader      :='Dias'+CRLF+'Pago'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 40
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,12],FDP(nMonto,'9999')}
+
+  oCol:=oCDCADD:oBrw3:aCols[13]
+  oCol:cHeader      :='Estatus'+CRLF+'Pago'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 65
+
+  oCol:=oCDCADD:oBrw3:aCols[14]
+  oCol:cHeader      :='Cbte.'+CRLF+'Pago'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 60
+
+  oCol:=oCDCADD:oBrw3:aCols[15]
+  oCol:cHeader      :='Cbte.'+CRLF+'Contable'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 80
+
+  oCol:=oCDCADD:oBrw3:aCols[16]
+  oCol:cHeader      :='Dias'+CRLF+'x Transc'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 40
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,16],FDP(nMonto,'9999')}
+
+
+  oCDCADD:oBrw3:aCols[1]:cFooter:=" #"+LSTR(LEN(aData))
+
+
+  oCol:=oCDCADD:oBrw3:aCols[17]
+  oCol:cHeader      :='Color'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 80
+
+  oCol:=oCDCADD:oBrw3:aCols[18]
+  oCol:cHeader      :='Código'+CRLF+'CxP'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 80
+
+  oCol:=oCDCADD:oBrw3:aCols[19]
+  oCol:cHeader      :='Número'+CRLF+'Documento'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 80
+
+  oCol:=oCDCADD:oBrw3:aCols[20]
+  oCol:cHeader      :='Código'+CRLF+'Planif.'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 65
+
+  oCol:=oCDCADD:oBrw3:aCols[21]
+  oCol:cHeader      :='Número'+CRLF+'Planificación'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 240
+
+
+  oCol:=oCDCADD:oBrw3:aCols[22]
+  oCol:cHeader      :='Institución'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 300
+
+
+  oCol:=oCDCADD:oBrw3:aCols[23]
+  oCol:cHeader      :='Color'+CRLF+'Tipo'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 40
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,23],FDP(nMonto,'9999999')}
+
+  oCol:=oCDCADD:oBrw3:aCols[24]
+  oCol:cHeader      :='Monto'+CRLF+'Calculado'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 100
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:cEditPicture :='9,999,999,999,999.99'
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,24],;
+                              oCol   := oCDCADD:oBrw3:aCols[24],;
+                              FDP(nMonto,oCol:cEditPicture)}
+
+
+  oCol:=oCDCADD:oBrw3:aCols[25]
+  oCol:cHeader      :='Valor'+CRLF+'Divisa'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 100
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:cEditPicture :=oDp:cPictValCam
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,25],;
+                              oCol   := oCDCADD:oBrw3:aCols[25],;
+                              FDP(nMonto,oCol:cEditPicture)}
+
+  oCol:=oCDCADD:oBrw3:aCols[26]
+  oCol:cHeader      :='Monto'+CRLF+'Divisa'
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:nWidth       := 100
+  oCol:nDataStrAlign:= AL_RIGHT 
+  oCol:nHeadStrAlign:= AL_RIGHT 
+  oCol:nFootStrAlign:= AL_RIGHT 
+  oCol:cEditPicture :='9,999,999,999,999.99'
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,26],;
+                              oCol   := oCDCADD:oBrw3:aCols[26],;
+                              FDP(nMonto,oCol:cEditPicture)}
+  oCol:cFooter      :=FDP(aTotal[26],'9,999,999,999,999.99')
+ 
+
+  oCDCADD:oBrw3:bClrStd               := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw3,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
+                                          nClrText:=oBrw:aArrayData[oBrw:nArrayAt,17],;
+                                         {nClrText,iif( oBrw:nArrayAt%2=0, oCALFISDET:nClrPane1, oCALFISDET:nClrPane2 ) } }
+
+
+  oCDCADD:oBrw3:bClrFooter     := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
+  oCDCADD:oBrw3:bClrHeader     := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
+
+  oCDCADD:oBrw3:bLDblClick:={|oBrw|oCALFISDET:oRep:=oCALFISDET:RUNCLICK() }
+
+  oCDCADD:oBrw3:bChange:={||oCALFISDET:BRWCHANGE()}
+
+  oCDCADD:oBrw3:CreateFromCode()
+
+  oCDCADD:oBrw3:aCols[17]:lHide:=.T. // DelCol(17)
+
+
+
    oCDCADD:oBrw3:CreateFromCode()
    oCDCADD:oBrw3:Move(205+oCDCADD:nAltoBrw,205+oCDCADD:nAnchoSpl1,.T.)
    oCDCADD:oBrw3:SetSize(300,150,.T.)
@@ -562,6 +808,183 @@ RETURN .T.
 
 FUNCTION LEERDATA()
 RETURN .T.
+
+FUNCTION LEERDATAFIS(cWhere,oBrw,cServer)
+   LOCAL aData:={},aTotal:={},oCol,cSql,aLines:={},I,nMes:=MONTH(oDp:dFecha)
+   LOCAL oDb,aOptions:={}
+
+   DEFAULT cWhere:=""
+
+   IF !Empty(cServer)
+
+     IF !EJECUTAR("DPSERVERDBOPEN",cServer)
+        RETURN .F.
+     ENDIF
+
+     oDb:=oDp:oDb
+
+   ENDIF
+
+   cSql:= "  SELECT  "+;
+          "  PLP_FECHA, "+;
+          "  MONTHNAME(PLP_FECHA) AS MES, "+;
+          "  DAYNAME(PLP_FECHA) AS DIA, "+;
+          "  PLP_TIPDOC, "+;
+          "  TDC_DESCRI, "+;
+          "  PLP_REFERE, "+;
+          "  DOC_FECHA  AS FCHREG, "+;
+          "  IF(DOC_NETO=0 OR DOC_NETO IS NULL ,PLP_MTOCAL,DOC_NETO), "+;
+          "  DOC_FECHA-PLP_FECHA AS DIASDOC, "+;
+          "  '' AS REGESTATUS, "+;
+          "  PAG_FECHA  AS FCHPAGO, "+;
+          "  PAG_FECHA-DOC_FECHA AS DIASPAG, "+;
+          "  '' AS PAGESTATUS, "+;
+          "  PAG_PAGNUM AS PAGNUMERO, "+;
+          "  DOC_CBTNUM AS CBTNUM, "+;
+          "  0 AS DIAS, "+;
+          "  0 AS COLOR,PRO_CODIGO,DOC_NUMERO,PGC_NUMERO,PLP_NUMREG,PRO_NOMBRE,TDC_CLRGRA,PLP_MTOCAL,PLP_VALCAM,"+;
+          "  PLP_MTOCAL/PLP_VALCAM AS PLP_MTODIV "+;
+          "  FROM DPDOCPROPROG   "+;
+          "  INNER JOIN DPTIPDOCPRO      ON PLP_TIPDOC=TDC_TIPO   AND TDC_TRIBUT=1 AND TDC_ACTIVO=1 "+;
+          "  INNER JOIN DPPROVEEDOR      ON PLP_CODIGO=PRO_CODIGO      "+;
+          "  INNER JOIN DPPROVEEDORPROG  ON PLP_CODSUC=PGC_CODSUC AND  "+;
+          "                                 PLP_CODIGO=PGC_CODIGO AND  "+;
+          "                                 PLP_TIPDOC=PGC_TIPDOC AND  "+;
+          "                                 PLP_REFERE=PGC_REFERE      "+;
+          "  LEFT  JOIN       DPDOCPRO   ON PLP_CODSUC=DOC_CODSUC AND  "+;
+          "                                 PLP_TIPDOC=DOC_TIPDOC AND  "+;
+          "                                 PLP_CODIGO=DOC_CODIGO AND  "+;
+          "                                 PLP_NUMREG=DOC_PPLREG AND  "+;
+          "                                 PLP_NUMDOC=DOC_NUMERO AND  "+;
+          "                                 DOC_TIPTRA='D'   "+;
+          "  LEFT  JOIN VIEW_DPDOCPROPAG ON DOC_CODSUC=PAG_CODSUC AND "+;
+          "                                 DOC_TIPDOC=PAG_TIPDOC AND "+;
+          "  							 DOC_CODIGO=PAG_CODIGO AND "+;
+          "  							 DOC_NUMERO=PAG_NUMERO     "+;       
+          "  WHERE "+cWhere+;
+          "  GROUP BY PLP_FECHA,PLP_TIPDOC,PLP_REFERE,PLP_NUMREG "+;
+          "  ORDER BY PLP_FECHA   "+;
+          ""
+
+   aData:=ASQL(cSql,oDb)
+
+
+   AEVAL(aData,{|a,n| aData[n,2] :=LEFT(CMES(a[1]),3)   ,;
+                      aData[n,3] :=LEFT(CSEMANA(a[1]),3),;
+                      aData[n,16]:=a[1]-oDp:dFecha})
+
+
+   DPWRITE("TEMP\BRCALFISDET.SQL",cSql)
+
+
+   FOR I=1 TO LEN(aData)
+
+      IF Empty(aData[I,7]) .AND. aData[I,16]<0
+        aData[I,10]:="Extemporáneo"
+        aData[I,17]:=CLR_HRED
+      ENDIF
+
+      IF Empty(aData[I,7]) .AND. MONTH(aData[I,1])=nMes .AND. aData[I,16]>0
+        aData[I,10]:="Por Realizar"
+        aData[I,17]:=26316
+      ENDIF
+
+      IF !Empty(aData[I,7]) 
+        aData[I,10]:="Registrado"
+        aData[I,17]:=CLR_HBLUE
+      ENDIF
+
+      IF !Empty(aData[I,11]) 
+        aData[I,10]:="Pagado"
+        aData[I,17]:=CLR_GREEN
+      ENDIF
+
+
+      IF !Empty(aData[I,10]) .AND.!Empty(aData[I,7])
+        aData[I,13]:=IIF(Empty(aData[I,15]),"Sin Efecto","Por Pagar")
+      ENDIF
+
+   NEXT I
+
+   IF EMPTY(aData)
+      aData:=EJECUTAR("SQLARRAYEMPTY",cSql)
+   ENDIF
+
+   IF ValType(oBrw)="O"
+
+      oCALFISDET:cSql   :=cSql
+      oCALFISDET:cWhere_:=cWhere
+
+      aTotal:=ATOTALES(aData)
+
+      oBrw:aArrayData:=ACLONE(aData)
+      oBrw:nArrayAt  :=1
+      oBrw:nRowSel   :=1
+/*
+      oCol:=oCDCADD:oBrw3:aCols[9]
+      oCol:cFooter      :=FDP(aTotal[9],'999,999,999.99')
+      oCol:=oCDCADD:oBrw3:aCols[12]
+      oCol:cFooter      :=FDP(aTotal[12],'999,999,999.99')
+
+      oBrw:aCols[1]:cFooter:=" #"+LSTR(LEN(aData))
+   
+      oBrw:Refresh(.T.)
+      oBrw:RefreshFooters()
+*/
+      EJECUTAR("BRWCALTOTALES",oBrw,.T.)
+
+      FOR I=1 TO LEN(aData)
+        IF ASCAN(aOptions,aData[I,10])=0
+          AADD(aOptions,aData[I,10])
+        ENDIF
+      NEXT I
+
+      ADEPURA(aOptions,{|a,n| Empty(a)})
+
+      AADD(aOptions,"Todos")
+
+      oCALFISDET:oOptions:aItems:=ACLONE(aOptions)
+
+
+      AEVAL(oCALFISDET:oBar:aControls,{|o,n| o:ForWhen(.T.)})
+
+      oCALFISDET:SAVEPERIODO()
+
+   ENDIF
+
+RETURN aData
+
+
+FUNCTION HACERWHEREFIS(dDesde,dHasta,cWhere_,lRun)
+   LOCAL cWhere:=""
+
+   DEFAULT lRun:=.F.
+
+   IF !Empty(dDesde)
+       cWhere:=GetWhereAnd('DPDOCPROPROG.PLP_FECHA',dDesde,dHasta)
+   ELSE
+     IF !Empty(dHasta)
+       cWhere:=GetWhereAnd('DPDOCPROPROG.PLP_FECHA',dDesde,dHasta)
+     ENDIF
+   ENDIF
+
+   IF !Empty(cWhere_)
+      cWhere:=cWhere + IIF( Empty(cWhere),""," AND ") +cWhere_
+   ENDIF
+
+   IF lRun
+
+     IF !Empty(oCALFISDET:cWhereQry)
+       cWhere:=cWhere + oCALFISDET:cWhereQry
+     ENDIF
+
+     oCALFISDET:LEERDATA(cWhere,oCDCADD:oBrw3,oCALFISDET:cServer)
+
+   ENDIF
+
+
+RETURN cWhere
+
 
 FUNCTION SAVEPERIODO()
   LOCAL cFileMem  :="USER\ADDON_CDC.MEM"

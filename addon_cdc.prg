@@ -20,10 +20,14 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
    LOCAL V_dDesde :=CTOD("")
    LOCAL V_dHasta :=CTOD("")
    LOCAL oDb      :=OpenOdbc(oDp:cDsnData)
-   LOCAL aData    :={} // EJECUTAR("DBFVIEWARRAY","DATADBF\DPLINK.DBF",NIL,.F.)
-   LOCAL aDataFis :={} // EJECUTAR("DBFVIEWARRAY","DATADBF\DPMENU.DBF",NIL,.F.)
+   LOCAL aData    :={} 
+   LOCAL aDataFis :={} 
    LOCAL dFecha   :=oDp:dFecha,cServer,cWhere
+   LOCAL aTotal   :=ATOTALES(aData)
 
+   DEFAULT oDp:lAplNomina:=.F. 
+
+   EJECUTAR("DPIVATAB_CHK")
    SQLDELETE("DPRIF","RIF_ID"+GetWhere("=",""))
 
    IF Empty(oDp:cRif)
@@ -88,9 +92,10 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
    aDataFis:=LEERDATAFIS(HACERWHEREFIS(dDesde,dHasta,cWhere),NIL,cServer)
 
    aData   :=EJECUTAR("CONTAB_DEBERES",cCodSuc,oDp:dFechaIni,dFecha)
+   aTotal  :=ATOTALES(aDataFis)
 
-   DEFINE FONT oFont    NAME "Tahoma" SIZE 0,-12 BOLD
-   DEFINE FONT oFontB   NAME "Tahoma" SIZE 0,-14 BOLD
+   DEFINE FONT oFont    NAME "Tahoma" SIZE 0,-11 BOLD
+   DEFINE FONT oFontB   NAME "Tahoma" SIZE 0,-11 BOLD
 
    DpMdi("Menú: Asistente Contable","oCDCADD","")
 
@@ -117,7 +122,7 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
    oCDCADD:SetFunction("MDISETPROCE")
    oCDCADD:cWhereQry :=NIL
 
-   oCDCADD:nAltoBrw  :=100+100+08
+   oCDCADD:nAltoBrw  :=160 // 100+100+08
    oCDCADD:nAnchoSpl1:=120+40
 
 
@@ -132,7 +137,7 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
    oCDCADD:Windows(0,0,oDp:aCoors[3]-160,oDp:aCoors[4]-10,.T.)  
 
   @ 48+40-10+20+15, -1 OUTLOOK oCDCADD:oOut ;
-     SIZE (150+250)-40, oCDCADD:oWnd:nHeight()-154;
+     SIZE (150+250)-40, oCDCADD:oWnd:nHeight()-140;
      PIXEL ;
      FONT oFont ;
      OF oCDCADD:oWnd;
@@ -281,88 +286,83 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
    oCDCADD:oBrw2:Move(0,205+oCDCADD:nAnchoSpl1,.T.)
    oCDCADD:oBrw2:SetSize(300,200+oCDCADD:nAltoBrw)
 
-   
 
- 
-   oCDCADD:oBrw3:=TXBrowse():New(oCDCADD:oWnd)
-   oCDCADD:oBrw3:SetArray( aDataFis, .F. )
+   oCDCADD:oBrw:=TXBrowse():New(oCDCADD:oWnd)
+   oCDCADD:oBrw:SetArray( aDataFis, .F. )
 
-   oCALFISDET:dFchIni  :=CTOD("")
-   oCALFISDET:dFchFin  :=CTOD("")
+   oCDCADD:dFchIni  :=CTOD("")
+   oCDCADD:dFchFin  :=CTOD("")
 
-   oCDCADD:oBrw3:SetFont(oFont)
+   oCDCADD:oBrw:SetFont(oFont)
 
-   oCDCADD:oBrw3:lFooter     := .T.
-   oCDCADD:oBrw3:lHScroll    := .T.
-   oCDCADD:oBrw3:nHeaderLines:= 2
-   oCDCADD:oBrw3:nDataLines  := 1
-   oCDCADD:oBrw3:nFooterLines:= 1
+   oCDCADD:oBrw:lFooter     := .T.
+   oCDCADD:oBrw:lHScroll    := .T.
+   oCDCADD:oBrw:nHeaderLines:= 2
+   oCDCADD:oBrw:nDataLines  := 1
+   oCDCADD:oBrw:nFooterLines:= 1
 
-   oCALFISDET:aData            :=ACLONE(aData)
-   oCALFISDET:nClrText :=0
-   oCALFISDET:nClrPane1:=16774120
-   oCALFISDET:nClrPane2:=16771797
+   oCDCADD:aData            :=ACLONE(aData)
+   oCDCADD:nClrText :=0
+   oCDCADD:nClrPane1:=16774120
+   oCDCADD:nClrPane2:=16771797
 
-   AEVAL(oCDCADD:oBrw3:aCols,{|oCol|oCol:oHeaderFont:=oFontB})
+   AEVAL(oCDCADD:oBrw:aCols,{|oCol|oCol:oHeaderFont:=oFontB})
 
-   oCol:=oCDCADD:oBrw3:aCols[1]
+   oCol:=oCDCADD:oBrw:aCols[1]
    oCol:cHeader      :='Fecha'+CRLF+'Actividad'
-   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
-   oCol:nWidth       := 70
+   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
+   oCol:nWidth       := 74
 
-   oCol:=oCDCADD:oBrw3:aCols[2]
+   oCol:=oCDCADD:oBrw:aCols[2]
    oCol:cHeader      :='Mes'
-   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
    oCol:nWidth       := 32
 
-   oCol:=oCDCADD:oBrw3:aCols[3]
+   oCol:=oCDCADD:oBrw:aCols[3]
    oCol:cHeader      :='Día'
-   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
    oCol:nWidth       := 32
 
-   oCol:=oCDCADD:oBrw3:aCols[4]
+   oCol:=oCDCADD:oBrw:aCols[4]
    oCol:cHeader      :='Tipo'+CRLF+'Doc.'
-   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+   oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
    oCol:nWidth       := 35
 
-  oCol:bClrStd      := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw3,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
+  oCol:bClrStd      := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
                                        nClrText:=oBrw:aArrayData[oBrw:nArrayAt,17],;
                                        nClrText:=IF(aData[23]>0 .AND. nClrText=0,aData[23],oBrw:aArrayData[oBrw:nArrayAt,17]),;
-                                      {nClrText,iif( oBrw:nArrayAt%2=0, oCALFISDET:nClrPane1, oCALFISDET:nClrPane2 ) } }
+                                      {nClrText,iif( oBrw:nArrayAt%2=0, oCDCADD:nClrPane1, oCDCADD:nClrPane2 ) } }
 
 
-  oCol:=oCDCADD:oBrw3:aCols[5]
+  oCol:=oCDCADD:oBrw:aCols[5]
   oCol:cHeader      :='Descripción'
-  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 170
 
 
-  oCol:bClrStd      := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw3,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
+  oCol:bClrStd      := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
                                        nClrText:=oBrw:aArrayData[oBrw:nArrayAt,17],;
                                        nClrText:=IF(aData[23]>0 .AND. nClrText=0,aData[23],oBrw:aArrayData[oBrw:nArrayAt,17]),;
-                                      {nClrText,iif( oBrw:nArrayAt%2=0, oCALFISDET:nClrPane1, oCALFISDET:nClrPane2 ) } }
+                                      {nClrText,iif( oBrw:nArrayAt%2=0, oCDCADD:nClrPane1, oCDCADD:nClrPane2 ) } }
 
-  oCol:=oCDCADD:oBrw3:aCols[6]
+  oCol:=oCDCADD:oBrw:aCols[6]
   oCol:cHeader      :='Referencia'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 80
 
-  oCol:bClrStd      := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw3,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
+  oCol:bClrStd      := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
                                        nClrText:=oBrw:aArrayData[oBrw:nArrayAt,17],;
                                        nClrText:=IF(aData[23]>0 .AND. nClrText=0,aData[23],oBrw:aArrayData[oBrw:nArrayAt,17]),;
-                                      {nClrText,iif( oBrw:nArrayAt%2=0, oCALFISDET:nClrPane1, oCALFISDET:nClrPane2 ) } }
+                                      {nClrText,iif( oBrw:nArrayAt%2=0, oCDCADD:nClrPane1, oCDCADD:nClrPane2 ) } }
 
-
-
-  oCol:=oCDCADD:oBrw3:aCols[7]
+  oCol:=oCDCADD:oBrw:aCols[7]
   oCol:cHeader      :='Fecha'+CRLF+'Registro'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 70
 
-
-  oCol:=oCDCADD:oBrw3:aCols[8]
+  oCol:=oCDCADD:oBrw:aCols[8]
   oCol:cHeader      :='Monto'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 120
   oCol:nDataStrAlign:= AL_RIGHT 
   oCol:nHeadStrAlign:= AL_RIGHT 
@@ -370,191 +370,186 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
   oCol:cFooter      :=FDP(aTotal[8],'9,999,999,999,999.99')
 
   oCol:cEditPicture :='9,999,999,999,999.99'
-  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,8],;
-                              oCol   := oCDCADD:oBrw3:aCols[8],;
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw:aArrayData[oCDCADD:oBrw:nArrayAt,8],;
+                              oCol   := oCDCADD:oBrw:aCols[8],;
                               FDP(nMonto,oCol:cEditPicture)}
 
 
-  oCol:=oCDCADD:oBrw3:aCols[9]
+  oCol:=oCDCADD:oBrw:aCols[9]
   oCol:cHeader      :='Dias'+CRLF+'Reg.'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 40
   oCol:nDataStrAlign:= AL_RIGHT 
   oCol:nHeadStrAlign:= AL_RIGHT 
   oCol:nFootStrAlign:= AL_RIGHT 
-  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,9],FDP(nMonto,'9999999')}
+  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw:aArrayData[oCDCADD:oBrw:nArrayAt,9],FDP(nMonto,'9999999')}
 
-  oCol:=oCDCADD:oBrw3:aCols[10]
+  oCol:=oCDCADD:oBrw:aCols[10]
   oCol:cHeader      :='Estatus'+CRLF+'Registro'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       :=90
 
-  oCol:=oCDCADD:oBrw3:aCols[11]
+  oCol:=oCDCADD:oBrw:aCols[11]
   oCol:cHeader      :='Fecha'+CRLF+'Pago'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 70
 
-  oCol:=oCDCADD:oBrw3:aCols[12]
+  oCol:=oCDCADD:oBrw:aCols[12]
   oCol:cHeader      :='Dias'+CRLF+'Pago'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 40
   oCol:nDataStrAlign:= AL_RIGHT 
   oCol:nHeadStrAlign:= AL_RIGHT 
   oCol:nFootStrAlign:= AL_RIGHT 
-  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,12],FDP(nMonto,'9999')}
+  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw:aArrayData[oCDCADD:oBrw:nArrayAt,12],FDP(nMonto,'9999')}
 
-  oCol:=oCDCADD:oBrw3:aCols[13]
+  oCol:=oCDCADD:oBrw:aCols[13]
   oCol:cHeader      :='Estatus'+CRLF+'Pago'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 65
 
-  oCol:=oCDCADD:oBrw3:aCols[14]
+  oCol:=oCDCADD:oBrw:aCols[14]
   oCol:cHeader      :='Cbte.'+CRLF+'Pago'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 60
 
-  oCol:=oCDCADD:oBrw3:aCols[15]
+  oCol:=oCDCADD:oBrw:aCols[15]
   oCol:cHeader      :='Cbte.'+CRLF+'Contable'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 80
 
-  oCol:=oCDCADD:oBrw3:aCols[16]
+  oCol:=oCDCADD:oBrw:aCols[16]
   oCol:cHeader      :='Dias'+CRLF+'x Transc'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 40
   oCol:nDataStrAlign:= AL_RIGHT 
   oCol:nHeadStrAlign:= AL_RIGHT 
   oCol:nFootStrAlign:= AL_RIGHT 
-  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,16],FDP(nMonto,'9999')}
+  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw:aArrayData[oCDCADD:oBrw:nArrayAt,16],FDP(nMonto,'9999')}
 
 
-  oCDCADD:oBrw3:aCols[1]:cFooter:=" #"+LSTR(LEN(aData))
+  oCDCADD:oBrw:aCols[1]:cFooter:=" #"+LSTR(LEN(aData))
 
 
-  oCol:=oCDCADD:oBrw3:aCols[17]
+  oCol:=oCDCADD:oBrw:aCols[17]
   oCol:cHeader      :='Color'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 80
 
-  oCol:=oCDCADD:oBrw3:aCols[18]
+  oCol:=oCDCADD:oBrw:aCols[18]
   oCol:cHeader      :='Código'+CRLF+'CxP'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 80
 
-  oCol:=oCDCADD:oBrw3:aCols[19]
+  oCol:=oCDCADD:oBrw:aCols[19]
   oCol:cHeader      :='Número'+CRLF+'Documento'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 80
 
-  oCol:=oCDCADD:oBrw3:aCols[20]
+  oCol:=oCDCADD:oBrw:aCols[20]
   oCol:cHeader      :='Código'+CRLF+'Planif.'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 65
 
-  oCol:=oCDCADD:oBrw3:aCols[21]
+  oCol:=oCDCADD:oBrw:aCols[21]
   oCol:cHeader      :='Número'+CRLF+'Planificación'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 240
 
 
-  oCol:=oCDCADD:oBrw3:aCols[22]
+  oCol:=oCDCADD:oBrw:aCols[22]
   oCol:cHeader      :='Institución'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 300
 
 
-  oCol:=oCDCADD:oBrw3:aCols[23]
+  oCol:=oCDCADD:oBrw:aCols[23]
   oCol:cHeader      :='Color'+CRLF+'Tipo'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 40
   oCol:nDataStrAlign:= AL_RIGHT 
   oCol:nHeadStrAlign:= AL_RIGHT 
   oCol:nFootStrAlign:= AL_RIGHT 
-  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,23],FDP(nMonto,'9999999')}
+  oCol:bStrData:={|nMonto|nMonto:= oCDCADD:oBrw:aArrayData[oCDCADD:oBrw:nArrayAt,23],FDP(nMonto,'9999999')}
 
-  oCol:=oCDCADD:oBrw3:aCols[24]
+  oCol:=oCDCADD:oBrw:aCols[24]
   oCol:cHeader      :='Monto'+CRLF+'Calculado'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 100
   oCol:nDataStrAlign:= AL_RIGHT 
   oCol:nHeadStrAlign:= AL_RIGHT 
   oCol:nFootStrAlign:= AL_RIGHT 
   oCol:cEditPicture :='9,999,999,999,999.99'
-  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,24],;
-                              oCol   := oCDCADD:oBrw3:aCols[24],;
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw:aArrayData[oCDCADD:oBrw:nArrayAt,24],;
+                              oCol   := oCDCADD:oBrw:aCols[24],;
                               FDP(nMonto,oCol:cEditPicture)}
 
 
-  oCol:=oCDCADD:oBrw3:aCols[25]
+  oCol:=oCDCADD:oBrw:aCols[25]
   oCol:cHeader      :='Valor'+CRLF+'Divisa'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 100
   oCol:nDataStrAlign:= AL_RIGHT 
   oCol:nHeadStrAlign:= AL_RIGHT 
   oCol:nFootStrAlign:= AL_RIGHT 
   oCol:cEditPicture :=oDp:cPictValCam
-  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,25],;
-                              oCol   := oCDCADD:oBrw3:aCols[25],;
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw:aArrayData[oCDCADD:oBrw:nArrayAt,25],;
+                              oCol   := oCDCADD:oBrw:aCols[25],;
                               FDP(nMonto,oCol:cEditPicture)}
 
-  oCol:=oCDCADD:oBrw3:aCols[26]
+  oCol:=oCDCADD:oBrw:aCols[26]
   oCol:cHeader      :='Monto'+CRLF+'Divisa'
-  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw3:aArrayData ) } 
+  oCol:bLClickHeader := {|r,c,f,o| SortArray( o, oCDCADD:oBrw:aArrayData ) } 
   oCol:nWidth       := 100
   oCol:nDataStrAlign:= AL_RIGHT 
   oCol:nHeadStrAlign:= AL_RIGHT 
   oCol:nFootStrAlign:= AL_RIGHT 
   oCol:cEditPicture :='9,999,999,999,999.99'
-  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw3:aArrayData[oCDCADD:oBrw3:nArrayAt,26],;
-                              oCol   := oCDCADD:oBrw3:aCols[26],;
+  oCol:bStrData:={|nMonto,oCol|nMonto:= oCDCADD:oBrw:aArrayData[oCDCADD:oBrw:nArrayAt,26],;
+                              oCol   := oCDCADD:oBrw:aCols[26],;
                               FDP(nMonto,oCol:cEditPicture)}
   oCol:cFooter      :=FDP(aTotal[26],'9,999,999,999,999.99')
  
 
-  oCDCADD:oBrw3:bClrStd               := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw3,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
+  oCDCADD:oBrw:bClrStd               := {|oBrw,nClrText,aData|oBrw:=oCDCADD:oBrw,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
                                           nClrText:=oBrw:aArrayData[oBrw:nArrayAt,17],;
-                                         {nClrText,iif( oBrw:nArrayAt%2=0, oCALFISDET:nClrPane1, oCALFISDET:nClrPane2 ) } }
+                                         {nClrText,iif( oBrw:nArrayAt%2=0, oCDCADD:nClrPane1, oCDCADD:nClrPane2 ) } }
 
 
-  oCDCADD:oBrw3:bClrFooter     := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
-  oCDCADD:oBrw3:bClrHeader     := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
+  oCDCADD:oBrw:bClrFooter     := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
+  oCDCADD:oBrw:bClrHeader     := {|| { oDp:nLbxClrHeaderText, oDp:nLbxClrHeaderPane}}
 
-  oCDCADD:oBrw3:bLDblClick:={|oBrw|oCALFISDET:oRep:=oCALFISDET:RUNCLICK() }
+  oCDCADD:oBrw:bLDblClick:={|oBrw| oCDCADD:RUNCLICK3() }
 
-  oCDCADD:oBrw3:bChange:={||oCALFISDET:BRWCHANGE()}
+  oCDCADD:oBrw:bChange:={||oCDCADD:BRWCHANGE()}
 
-  oCDCADD:oBrw3:CreateFromCode()
+  oCDCADD:oBrw:CreateFromCode()
 
-  oCDCADD:oBrw3:aCols[17]:lHide:=.T. // DelCol(17)
+  oCDCADD:oBrw:aCols[17]:lHide:=.T. // DelCol(17)
 
+  oCDCADD:oBrw:CreateFromCode()
+  oCDCADD:oBrw:Move(205+oCDCADD:nAltoBrw,205+oCDCADD:nAnchoSpl1,.T.)
+  oCDCADD:oBrw:SetSize(300,150,.T.)
 
-
-   oCDCADD:oBrw3:CreateFromCode()
-   oCDCADD:oBrw3:Move(205+oCDCADD:nAltoBrw,205+oCDCADD:nAnchoSpl1,.T.)
-   oCDCADD:oBrw3:SetSize(300,150,.T.)
-
-
-   @ 200+oCDCADD:nAltoBrw,205+oCDCADD:nAnchoSpl1 SPLITTER oCDCADD:oHSplit ;
+ @ 200+oCDCADD:nAltoBrw,205+oCDCADD:nAnchoSpl1 SPLITTER oCDCADD:oHSplit ;
              HORIZONTAL ;
              PREVIOUS CONTROLS oCDCADD:oBrw2 ;
-             HINDS CONTROLS oCDCADD:oBrw3 ;
+             HINDS CONTROLS oCDCADD:oBrw ;
              TOP MARGIN 80 ;
              BOTTOM MARGIN 80 ;
              SIZE 300, 4  PIXEL ;
              OF oCDCADD:oWnd ;
              _3DLOOK
 
-   @ 0,200+oCDCADD:nAnchoSpl1   SPLITTER oCDCADD:oVSplit ;
-             VERTICAL ;
-             PREVIOUS CONTROLS oCDCADD:oOut ;
-             HINDS CONTROLS oCDCADD:oBrw2, oCDCADD:oHSplit, oCDCADD:oBrw3 ;
-             LEFT MARGIN 80 ;
-             RIGHT MARGIN 80 ;
-             SIZE 4, 355  PIXEL ;
-             OF oCDCADD:oWnd ;
-             _3DLOOK
-
-
+  @ 0,200+oCDCADD:nAnchoSpl1   SPLITTER oCDCADD:oVSplit ;
+            VERTICAL ;
+            PREVIOUS CONTROLS oCDCADD:oOut ;
+            HINDS CONTROLS oCDCADD:oBrw2, oCDCADD:oHSplit, oCDCADD:oBrw ;
+            LEFT MARGIN 80 ;
+            RIGHT MARGIN 80 ;
+            SIZE 4, 355  PIXEL ;
+            OF oCDCADD:oWnd ;
+            _3DLOOK
 
    oCDCADD:Activate("oCDCADD:FRMINIT()") // ,,"oCDCADD:oSpl:AdjRight()")
  
@@ -565,15 +560,31 @@ PROCE MAIN(cCodigo,cCodSuc,cRif,cCenCos,cCodCaj)
       EJECUTAR("DPCTAIMPORT")
    ENDIF
 
+   oCDCADD:bGotFocus:={|| oCDCADD:BTNSETFONT() }
+
 RETURN
 
+FUNCTION BTNSETFONT()
+  LOCAL oFont
+
+  DEFINE FONT oFontB NAME "Tahoma" SIZE 0, -10 BOLD
+
+  oCDCADD:oBar:SetFont(oFont)
+
+// oDp:oFrameDp:SetText("AQUI "+TIME())
+
+RETURN .T.
+
 FUNCTION FRMINIT()
-  LOCAL oCursor,oBar,oBtn,oFont,nCol:=12,nLin:=0
+  LOCAL oCursor,oBar,oBtn,oFont,nCol:=12,nLin:=0,oFontB,oFontF
   LOCAL nLin:=0
 
   DEFINE BUTTONBAR oBar SIZE 44+25,44+20 OF oCDCADD:oWnd 3D CURSOR oCursor
 
-  DEFINE FONT oFont  NAME "Tahoma"   SIZE 0, -09 BOLD
+  oCDCADD:oBar:=oBar
+
+  DEFINE FONT oFont  NAME "Tahoma" SIZE 0, -09 BOLD
+  DEFINE FONT oFontB NAME "Tahoma" SIZE 0, -10 BOLD
 
   DEFINE BUTTON oBtn;
           OF oBar;
@@ -581,22 +592,24 @@ FUNCTION FRMINIT()
           FONT oFont;
           FILENAME "BITMAPS\CONFIGURA.BMP";
           TOP PROMPT "Configurar"; 
+          MENU oCDCADD:MENU_CNF("MENU_CNFRUN","DOS");
           ACTION EJECUTAR("DPCONFIG")
 
   oBtn:cToolTip:="Configuración"
 
-
   DEFINE BUTTON oBtn;
-        OF oBar;
-        NOBORDER;
-        FONT oFont;
-        TOP PROMPT "Tip/Doc"; 
-        FILENAME oDp:cPathBitMaps+"TipDocument.bmp",NIL,"BITMAPS\TipDocument.bmp";
-        ACTION DPLBX("cdctipdocpro.lbx")
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\contabilidad.BMP";
+          MENU oCDCADD:MENU_CTA("MENU_CTARUN","UNO");
+          TOP PROMPT "Cuentas"; 
+          ACTION DPLBX("NMTRABAJADOR.LBX") 
 
-  oBtn:cToolTip:="Tipo Documentos"
+  oBtn:cToolTip:="Contabilidad"
 
- DEFINE BUTTON oBtn;
+/*
+  DEFINE BUTTON oBtn;
         OF oBar;
         NOBORDER;
         FONT oFont;
@@ -605,16 +618,32 @@ FUNCTION FRMINIT()
         ACTION EJECUTAR("BRTIPDOCPROCTA","TDC_LBCCDC=1")
 
   oBtn:cToolTip:="Integración"
+*/
+
 
   DEFINE BUTTON oBtn;
-        OF oBar;
-        NOBORDER;
-        FONT oFont;
-        TOP PROMPT "Proveedores"; 
-        FILENAME oDp:cPathBitMaps+"proveedores.bmp";
-        ACTION DPLBX("dpproveedor_ocasional.LBX")                                                                                      
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\seniat.BMP";
+          MENU oCDCADD:MENU_TRIB("MENU_TRIBRUN","UNO");
+          TOP PROMPT "Tributos"; 
+          ACTION EJECUTAR("BRCALFISDET")
 
-  oBtn:cToolTip:="Proveedor Ocasionales"
+  oBtn:cToolTip:="Calendario Fiscal"
+
+
+  DEFINE BUTTON oBtn;
+          OF oBar;
+          NOBORDER;
+          FONT oFont;
+          FILENAME "BITMAPS\trabajador.BMP";
+          MENU oCDCADD:MENU_NOM("MENU_NOMRUN","UNO");
+          TOP PROMPT "Trabajador"; 
+          ACTION DPLBX("NMTRABAJADOR.LBX") 
+
+  oBtn:cToolTip:="Trabajadores"
+
 
   DEFINE BUTTON oBtn;
           OF oBar;
@@ -628,16 +657,14 @@ FUNCTION FRMINIT()
 
   oBar:SetColor(CLR_BLACK,oDp:nGris)
 
- 
-
   AEVAL(oBar:aControls,{|o,n|o:SetColor(CLR_BLACK,oDp:nGris),;
                              nCol:=nCol+o:nWidth()})
 
-  DEFINE FONT oFont  NAME "Tahoma"   SIZE 0, -11  BOLD
+  DEFINE FONT oFontB  NAME "Tahoma"   SIZE 0, -11  BOLD
 
-  oBar:SetSize(NIL,100+15,.T.)
+  oBar:SetSize(NIL,70,.T.)
 
-  DEFINE FONT oFont  NAME "Tahoma"   SIZE 0, -12 BOLD
+  DEFINE FONT oFontF  NAME "Tahoma"   SIZE 0, -10 BOLD
 
   nLin:=-15 // 45
   nCol:=20
@@ -651,7 +678,7 @@ FUNCTION FRMINIT()
                 SIZE 100,200;
                 PIXEL;
                 OF oBar;
-                FONT oFont;
+                FONT oFontF;
                 ON CHANGE oCDCADD:LEEFECHAS();
                 WHEN oCDCADD:lWhen 
 
@@ -659,7 +686,7 @@ FUNCTION FRMINIT()
   ComboIni(oCDCADD:oPeriodo )
 
   @ nLin+20, nCol+103 BUTTON oCDCADD:oBtn PROMPT " < " SIZE 27,24;
-                 FONT oFont;
+                 FONT oFontF;
                  PIXEL;
                  OF oBar;
                  ACTION (EJECUTAR("PERIODOMAS",oCDCADD:oPeriodo:nAt,oCDCADD:oDesde,oCDCADD:oHasta,-1),;
@@ -668,7 +695,7 @@ FUNCTION FRMINIT()
 
 
   @ nLin+20, nCol+130 BUTTON oCDCADD:oBtn PROMPT " > " SIZE 27,24;
-                 FONT oFont;
+                 FONT oFontF;
                  PIXEL;
                  OF oBar;
                  ACTION (EJECUTAR("PERIODOMAS",oCDCADD:oPeriodo:nAt,oCDCADD:oDesde,oCDCADD:oHasta,+1),;
@@ -686,7 +713,7 @@ FUNCTION FRMINIT()
                   SIZE 76,24;
                   OF   oBar;
                   WHEN oCDCADD:oPeriodo:nAt=LEN(oCDCADD:oPeriodo:aItems) .AND. oCDCADD:lWhen ;
-                  FONT oFont
+                  FONT oFontF
 
    oCDCADD:oDesde:cToolTip:="F6: Calendario"
 
@@ -698,12 +725,12 @@ FUNCTION FRMINIT()
                 SIZE 80,23;
                 WHEN oCDCADD:oPeriodo:nAt=LEN(oCDCADD:oPeriodo:aItems) .AND. oCDCADD:lWhen ;
                 OF oBar;
-                FONT oFont
+                FONT oFontF
 
    oCDCADD:oHasta:cToolTip:="F6: Calendario"
 
    @ nLin+20,nCol+335+15 BUTTON oCDCADD:oBtn PROMPT " > " SIZE 27,24;
-               FONT oFont;
+               FONT oFontF;
                OF oBar;
                PIXEL;
                WHEN oCDCADD:oPeriodo:nAt=LEN(oCDCADD:oPeriodo:aItems);
@@ -714,27 +741,21 @@ FUNCTION FRMINIT()
 
   @ nLin+50,nCol  CHECKBOX oCDCADD:oADD_AUTEJE VAR oCDCADD:ADD_AUTEJE  PROMPT "Auto-Ejecución";
                   WHEN  (AccessField("DPADDON","ADD_AUTEJE",1));
-                  FONT oFont;
+                  FONT oFontB;
                   SIZE 140,20 OF oBar;
-                   ON CHANGE EJECUTAR("ADDONUPDATE","ADD_AUTEJE",oCDCADD:ADD_AUTEJE,"CDC") PIXEL
+                  ON CHANGE EJECUTAR("ADDONUPDATE","ADD_AUTEJE",oCDCADD:ADD_AUTEJE,"CDC") PIXEL
 
   oCDCADD:oADD_AUTEJE:cMsg    :="Auto-Ejecución cuando se Inicia el Sistema"
   oCDCADD:oADD_AUTEJE:cToolTip:="Auto-Ejecución cuando se Inicia el Sistema"
 
-/*
-  oCDCADD:oWnd:bResized:={||oCDCADD:oWnd:oClient := oCDCADD:oOut,;
-                          oCDCADD:oWnd:bResized:=NIL}
-*/
+  // 17/11/2024
 
-   // 17/11/2024
+  oCDCADD:oWnd:bResized:={||( oCDCADD:oVSplit:AdjLeft(), ;
+                              oCDCADD:oHSplit:AdjRight())}
 
-   oCDCADD:oWnd:bResized:={||( oCDCADD:oVSplit:AdjLeft(), ;
-                               oCDCADD:oHSplit:AdjRight())}
+  Eval( oCDCADD:oWnd:bResized )
 
-   Eval( oCDCADD:oWnd:bResized )
-
-   oCDCADD:oBrw2:SetColor(0,oCDCADD:nClrPane1)
-
+  oCDCADD:oBrw2:SetColor(0,oCDCADD:nClrPane1)
 
   BMPGETBTN(oBar)
                        
@@ -912,8 +933,8 @@ FUNCTION LEERDATAFIS(cWhere,oBrw,cServer)
 
    IF ValType(oBrw)="O"
 
-      oCALFISDET:cSql   :=cSql
-      oCALFISDET:cWhere_:=cWhere
+      oCDCADD:cSql   :=cSql
+      oCDCADD:cWhere_:=cWhere
 
       aTotal:=ATOTALES(aData)
 
@@ -921,9 +942,9 @@ FUNCTION LEERDATAFIS(cWhere,oBrw,cServer)
       oBrw:nArrayAt  :=1
       oBrw:nRowSel   :=1
 /*
-      oCol:=oCDCADD:oBrw3:aCols[9]
+      oCol:=oCDCADD:oBrw:aCols[9]
       oCol:cFooter      :=FDP(aTotal[9],'999,999,999.99')
-      oCol:=oCDCADD:oBrw3:aCols[12]
+      oCol:=oCDCADD:oBrw:aCols[12]
       oCol:cFooter      :=FDP(aTotal[12],'999,999,999.99')
 
       oBrw:aCols[1]:cFooter:=" #"+LSTR(LEN(aData))
@@ -943,12 +964,12 @@ FUNCTION LEERDATAFIS(cWhere,oBrw,cServer)
 
       AADD(aOptions,"Todos")
 
-      oCALFISDET:oOptions:aItems:=ACLONE(aOptions)
+      oCDCADD:oOptions:aItems:=ACLONE(aOptions)
 
 
-      AEVAL(oCALFISDET:oBar:aControls,{|o,n| o:ForWhen(.T.)})
+      AEVAL(oCDCADD:oBar:aControls,{|o,n| o:ForWhen(.T.)})
 
-      oCALFISDET:SAVEPERIODO()
+      oCDCADD:SAVEPERIODO()
 
    ENDIF
 
@@ -974,16 +995,516 @@ FUNCTION HACERWHEREFIS(dDesde,dHasta,cWhere_,lRun)
 
    IF lRun
 
-     IF !Empty(oCALFISDET:cWhereQry)
-       cWhere:=cWhere + oCALFISDET:cWhereQry
+     IF !Empty(oCDCADD:cWhereQry)
+       cWhere:=cWhere + oCDCADD:cWhereQry
      ENDIF
 
-     oCALFISDET:LEERDATA(cWhere,oCDCADD:oBrw3,oCALFISDET:cServer)
+     oCDCADD:LEERDATAFIS(cWhere,oCDCADD:oBrw,oCDCADD:cServer)
 
    ENDIF
 
 
 RETURN cWhere
+
+/*
+// Aqui ejecuta Proceso Automático
+*/
+FUNCTION RUNCLICK()
+  LOCAL cProce:=oCDCADD:oBrw2:aArrayData[oCDCADD:oBrw2:nArrayAt,5+1]
+
+  oDp:lPanel:=.F.
+
+  IF !Empty(cProce)
+    EJECUTAR("DPPROCESOSRUN", cProce )
+  ENDIF
+
+RETURN .T
+
+FUNCTION BRWCHANGE()
+RETURN .T.
+
+PROCE MENU_NOM(cFunction,cQuien)
+   LOCAL oPopFind,I,cBuscar,bAction,cFrm,bWhen
+   LOCAL aOption:={},nContar:=0
+
+   cFrm:=oCDCADD:cVarName
+
+   AADD(aOption,{"Seleccionar Nómina",""})
+   AADD(aOption,{"Pre-Nómina",[COUNT("NMTRABAJADOR")>0]})
+   AADD(aOption,{"Actualizar Nómina (Generar Recibos) ",[COUNT("NMTRABAJADOR")>0]})
+   AADD(aOption,{"Reversar"  ,[COUNT("NMFECHAS")>0]})
+   AADD(aOption,{"",""})
+   AADD(aOption,{"Variaciones"  ,[COUNT("NMTRABAJADOR")>0]})
+   AADD(aOption,{"Liquidaciones",[COUNT("NMTRABAJADOR")>0]})
+   AADD(aOption,{"Vacaciones"   ,[COUNT("NMTRABAJADOR")>0]})
+   AADD(aOption,{"Ausencias"    ,[COUNT("NMTRABAJADOR")>0]})
+   AADD(aOption,{"",""})
+   AADD(aOption,{"Conceptos"      ,""})
+   AADD(aOption,{"Constantes"     ,""})
+   AADD(aOption,{"Feriados"       ,""})
+   AADD(aOption,{"Tipos de Nómina",""})
+   AADD(aOption,{"",""})
+   AADD(aOption,{"Importar Trabajadores desde EXCEL",""})
+
+
+
+   C5MENU oPopFind POPUP;
+          COLOR    oDp:nMenuItemClrText,oDp:nMenuItemClrPane;
+          COLORSEL oDp:nMenuItemSelText,oDp:nMenuItemSelPane;
+          COLORBOX oDp:nMenuBoxClrText;
+          HEIGHT   oDp:nMenuHeight;
+          FONT     oDp:oFontMenu;
+          LOGOCOLOR oDp:nMenuMainClrText
+
+          FOR I=1 TO LEN(aOption)
+
+           IF Empty(aOption[I,1])
+
+              C5SEPARATOR
+
+            ELSE
+
+              nContar++
+
+              bAction:=cFrm+":lTodos:=.F.,oCDCADD:"+cFunction+"("+LSTR(nContar)+",["+cQuien+"]"+",["+aOption[I,1]+"]"+")"
+
+              bAction  :=BloqueCod(bAction)
+
+              bWhen    :=aOption[I,2]
+              bWhen    :=IF(Empty(bWhen),".T.",bWhen)
+              bWhen    :=BloqueCod(bWhen)
+
+              C5MenuAddItem(aOption[I,1],NIL,.F.,NIL,bAction,NIL,NIL,NIL,NIL,NIL,NIL,.F.,NIL,bWhen,.F.,,,,,,,,.F.,)
+
+            ENDIF
+
+          NEXT I
+
+   C5ENDMENU
+
+RETURN oPopFind
+
+FUNCTION MENU_NOMRUN(nOption,cPar2,cPar3)
+
+   CursorWait()
+
+   DEFAULT cPar3:=""
+
+   IF !oDp:lAplNomina
+      MsgRun("Aperturando Nómina")
+      EJECUTAR("APLNOM")
+   ENDIF
+
+   IF nOption=1
+      EJECUTAR("NMSELTIPO")    
+      RETURN
+   ENDIF
+
+   IF nOption=2
+      EJECUTAR("PRENOMINA")
+      RETURN
+   ENDIF
+
+   IF nOption=3
+      EJECUTAR("ACTUALIZA")
+      RETURN
+   ENDIF
+
+   IF nOption=4
+      EJECUTAR("REVERSAR")
+      RETURN
+   ENDIF
+ 
+   IF nOption=5
+      EJECUTAR("VARIACIONES")                                                                                                 
+   ENDIF
+
+   IF nOption=6
+      DPLBX("NMTABLIQ.LBX")
+      RETURN
+   ENDIF
+
+   IF nOption=7
+      DPLBX("NMTABVAC.LBX")
+      RETURN
+   ENDIF
+
+   IF nOption=8
+      DPLBX("NMAUSENCIA.LBX")
+      RETURN
+   ENDIF
+
+   IF nOption=9
+      DPLBX("NMCONCEPTOS.LBX")
+      RETURN
+   ENDIF
+
+   IF nOption=10
+      DPLBX("NMCONSTANTES")
+      RETURN
+   ENDIF
+
+   IF nOption=11
+      DPLBX("DPFERIADOS.LBX")
+      RETURN
+   ENDIF
+
+   IF nOption=11
+      DPLBX("DPFERIADOS.LBX")
+      RETURN
+   ENDIF
+
+   IF nOption=12
+      DPLBX("NMOTRASNM.LBX")                                                                                                  
+   ENDIF
+
+   IF nOption=13
+      EJECUTAR("NMIMPTRABXLS")                                                                                         
+   ENDIF
+
+                                                                                                 
+RETURN .T.
+
+
+
+PROCE MENU_CNF(cFunction,cQuien)
+   LOCAL oPopFind,I,cBuscar,bAction,cFrm,bWhen
+   LOCAL aOption:={},nContar:=0
+
+   cFrm:=oCDCADD:cVarName
+
+   AADD(aOption,{"Configurar Nómina",""})
+   AADD(aOption,{"",""})
+   AADD(aOption,{"Plan de Cuentas"  ,""})
+   AADD(aOption,{"Tipos de Documentos para Libro de Compras"  ,""})
+   AADD(aOption,{"Cuenta Contable por tipo de documentos del proveedor"  ,""})
+
+
+
+
+   C5MENU oPopFind POPUP;
+          COLOR    oDp:nMenuItemClrText,oDp:nMenuItemClrPane;
+          COLORSEL oDp:nMenuItemSelText,oDp:nMenuItemSelPane;
+          COLORBOX oDp:nMenuBoxClrText;
+          HEIGHT   oDp:nMenuHeight;
+          FONT     oDp:oFontMenu;
+          LOGOCOLOR oDp:nMenuMainClrText
+
+          FOR I=1 TO LEN(aOption)
+
+           IF Empty(aOption[I,1])
+
+              C5SEPARATOR
+
+            ELSE
+
+              nContar++
+
+              bAction:=cFrm+":lTodos:=.F.,oCDCADD:"+cFunction+"("+LSTR(nContar)+",["+cQuien+"]"+",["+aOption[I,1]+"]"+")"
+
+              bAction  :=BloqueCod(bAction)
+
+              bWhen    :=aOption[I,2]
+              bWhen    :=IF(Empty(bWhen),".T.",bWhen)
+              bWhen    :=BloqueCod(bWhen)
+
+              C5MenuAddItem(aOption[I,1],NIL,.F.,NIL,bAction,NIL,NIL,NIL,NIL,NIL,NIL,.F.,NIL,bWhen,.F.,,,,,,,,.F.,)
+
+            ENDIF
+
+          NEXT I
+
+   C5ENDMENU
+
+RETURN oPopFind
+
+FUNCTION MENU_CNFRUN(nOption,cPar2,cPar3)
+
+   CursorWait()
+
+   DEFAULT cPar3:=""
+
+   IF nOption=1
+
+      IF !oDp:lAplNomina
+        MsgRun("Aperturando Nómina")
+        EJECUTAR("APLNOM")
+      ENDIF
+
+      EJECUTAR("NMCONFIG")
+
+      RETURN
+   ENDIF
+
+   IF nOption=2
+     
+      IF COUNT("DPCTA")<=1
+        EJECUTAR("DPCTAIMPORT")
+      ELSE
+        DPLBX("DPCTAMENU.LBX")
+      ENDIF
+
+      RETURN NIL
+
+   ENDIF
+                                                                                                 
+RETURN .T.
+
+
+PROCE MENU_CTA(cFunction,cQuien)
+   LOCAL oPopFind,I,cBuscar,bAction,cFrm,bWhen
+   LOCAL aOption:={},nContar:=0
+
+   cFrm:=oCDCADD:cVarName
+
+   AADD(aOption,{"Código de Integración",""})
+   AADD(aOption,{"Ejercicios Contables" ,[]})
+   AADD(aOption,{"Centro de Costos"     ,[]})
+   AADD(aOption,{"",""})
+   AADD(aOption,{"Comprobantes Defiridos"   ,[COUNT("DPCTA")>0]})
+   AADD(aOption,{"Comprobantes Actualizados",[COUNT("DPCTA")>0]})
+   AADD(aOption,{"",""})
+   AADD(aOption,{"Actualizar"                    ,""})
+   AADD(aOption,{"Reversar"                      ,""})
+   AADD(aOption,{"Comprobantes Fijos Repetitivos",""})
+
+   AADD(aOption,{"",""})
+   AADD(aOption,{"Contabilizar Compras",""})
+   AADD(aOption,{"Contabilizar Ventas" ,""})
+   AADD(aOption,{"Contabilizar Nómina" ,""})
+
+   C5MENU oPopFind POPUP;
+          COLOR    oDp:nMenuItemClrText,oDp:nMenuItemClrPane;
+          COLORSEL oDp:nMenuItemSelText,oDp:nMenuItemSelPane;
+          COLORBOX oDp:nMenuBoxClrText;
+          HEIGHT   oDp:nMenuHeight;
+          FONT     oDp:oFontMenu;
+          LOGOCOLOR oDp:nMenuMainClrText
+
+          FOR I=1 TO LEN(aOption)
+
+           IF Empty(aOption[I,1])
+
+              C5SEPARATOR
+
+            ELSE
+
+              nContar++
+
+              bAction:=cFrm+":lTodos:=.F.,oCDCADD:"+cFunction+"("+LSTR(nContar)+",["+cQuien+"]"+",["+aOption[I,1]+"]"+")"
+
+              bAction  :=BloqueCod(bAction)
+
+              bWhen    :=aOption[I,2]
+              bWhen    :=IF(Empty(bWhen),".T.",bWhen)
+              bWhen    :=BloqueCod(bWhen)
+
+              C5MenuAddItem(aOption[I,1],NIL,.F.,NIL,bAction,NIL,NIL,NIL,NIL,NIL,NIL,.F.,NIL,bWhen,.F.,,,,,,,,.F.,)
+
+            ENDIF
+
+          NEXT I
+
+   C5ENDMENU
+
+RETURN oPopFind
+
+FUNCTION MENU_CTARUN(nOption,cPar2,cPar3)
+
+   CursorWait()
+
+   DEFAULT cPar3:=""
+
+   IF nOption=1
+      DPLBX("DPCODINTEGRA.LBX")                                                                                               
+      RETURN
+   ENDIF
+
+  IF nOption=2
+      DPLBX("DPEJERCICIOS.LBX")                                                                                               
+      RETURN
+   ENDIF
+
+   IF nOption=3
+      DPLBX("DPCENCOS.LBX")                                                                                                   
+      RETURN
+   ENDIF
+
+   IF nOption=4
+      EJECUTAR("DPCBTE","N")                                                                                                  
+      RETURN
+   ENDIF
+
+   IF nOption=5
+      EJECUTAR("DPCBTE","S")                                                                                                  
+      RETURN
+   ENDIF
+ 
+   IF nOption=6
+      EJECUTAR("DPCBTEACT")                                                                                                   
+   ENDIF
+
+   IF nOption=7
+      EJECUTAR("DPCBTEREV")                                                                                                   
+      RETURN
+   ENDIF
+
+   IF nOption=8
+      EJECUTAR("BRCBTFIJORES",NIL,NIL,11)                                                                                     
+      RETURN
+   ENDIF
+
+   IF nOption=9
+      EJECUTAR("DPCONTABCXP")
+      RETURN
+   ENDIF
+
+   IF nOption=10
+      EJECUTAR("DPCONTABCXC")                                                                                                 
+      RETURN
+   ENDIF
+   
+   IF nOption=11
+      EJECUTAR("NMCONTABILIZAR")                                                                                              
+      RETURN
+   ENDIF
+
+   IF nOption=12
+   ENDIF
+
+   IF nOption=13
+   ENDIF
+                                                                                                 
+RETURN .T.
+
+
+PROCE MENU_TRIB(cFunction,cQuien)
+   LOCAL oPopFind,I,cBuscar,bAction,cFrm,bWhen
+   LOCAL aOption:={},nContar:=0
+
+   cFrm:=oCDCADD:cVarName
+
+   AADD(aOption,{"URL Oficiales",""})
+   AADD(aOption,{"Multas y Sanciones",""})
+   AADD(aOption,{"Búscar en legislación",""})
+   AADD(aOption,{"",""})
+   AADD(aOption,{"ARC-Anual"      ,""})
+   AADD(aOption,{"",""})
+   AADD(aOption,{"Tipo de Alícuotas",""})
+   AADD(aOption,{"% Alicuotas de IVA",""})
+
+   C5MENU oPopFind POPUP;
+          COLOR    oDp:nMenuItemClrText,oDp:nMenuItemClrPane;
+          COLORSEL oDp:nMenuItemSelText,oDp:nMenuItemSelPane;
+          COLORBOX oDp:nMenuBoxClrText;
+          HEIGHT   oDp:nMenuHeight;
+          FONT     oDp:oFontMenu;
+          LOGOCOLOR oDp:nMenuMainClrText
+
+          FOR I=1 TO LEN(aOption)
+
+           IF Empty(aOption[I,1])
+
+              C5SEPARATOR
+
+            ELSE
+
+              nContar++
+
+              bAction:=cFrm+":lTodos:=.F.,oCDCADD:"+cFunction+"("+LSTR(nContar)+",["+cQuien+"]"+",["+aOption[I,1]+"]"+")"
+
+              bAction  :=BloqueCod(bAction)
+
+              bWhen    :=aOption[I,2]
+              bWhen    :=IF(Empty(bWhen),".T.",bWhen)
+              bWhen    :=BloqueCod(bWhen)
+
+              C5MenuAddItem(aOption[I,1],NIL,.F.,NIL,bAction,NIL,NIL,NIL,NIL,NIL,NIL,.F.,NIL,bWhen,.F.,,,,,,,,.F.,)
+
+            ENDIF
+
+          NEXT I
+
+   C5ENDMENU
+
+RETURN oPopFind
+
+FUNCTION MENU_TRIBRUN(nOption,cPar2,cPar3)
+
+   CursorWait()
+
+   DEFAULT cPar3:=""
+
+   IF nOption=1
+      DPLBX("DPURL.LBX")
+      RETURN
+   ENDIF
+
+   IF nOption=2
+      EJECUTAR("COTMULTASSANCIONES")
+      RETURN
+   ENDIF
+
+   IF nOption=3
+      EJECUTAR("NMLEYTRA")
+      RETURN
+   ENDIF
+
+   IF nOption=4
+      EJECUTAR("BRARCANUALXCALC")
+      RETURN
+   ENDIF
+ 
+   IF nOption=5
+      DPLBX("DPIVATIP.LBX")
+      RETURN NIL
+   ENDIF
+
+   IF nOption=6
+      DPLBX("DPTARIFASRET.LBX")
+      RETURN NIL
+   ENDIF
+
+   IF nOption=7
+      RETURN
+   ENDIF
+
+   IF nOption=8
+      RETURN
+   ENDIF
+
+   IF nOption=9
+      RETURN
+   ENDIF
+
+   IF nOption=10
+      RETURN
+   ENDIF
+
+   IF nOption=11
+      RETURN
+   ENDIF
+
+   IF nOption=11
+      RETURN
+   ENDIF
+
+RETURN .T.
+
+FUNCTION RUNCLICK3()
+   LOCAL lFecha:=.T.
+RETURN EJECUTAR("BRCALFISDETRUN",lFecha,oCDCADD)
+
+FUNCTION HACERQUINCENA()
+   LOCAL aLine  :=oCDCADD:oBrw:aArrayData[oCDCADD:oBrw:nArrayAt]
+   LOCAL dDesde :=aLine[1],dHasta
+
+   EJECUTAR("GETQUINCENAFISCAL",dDesde)
+
+   oCDCADD:dFchIni:=oDp:aLine[1]
+   oCDCADD:dFchFin:=oDp:aLine[2]
+
+RETURN .T.
 
 
 FUNCTION SAVEPERIODO()
@@ -995,4 +1516,5 @@ FUNCTION SAVEPERIODO()
   SAVE TO (cFileMem) ALL LIKE "V_*"
 
 RETURN .T.
+
 // EOF

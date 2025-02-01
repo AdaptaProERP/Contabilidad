@@ -17,6 +17,8 @@ PROCE MAIN(cWhere,cCodSuc,nPeriodo,dDesde,dHasta,cTitle,aCodCta)
    LOCAL aPropG   :={}
    LOCAL aCtas    :={oDp:cCtaBg1,oDp:cCtaBg2,oDp:cCtaBg3,oDp:cCtaBg4,oDp:cCtaGp1,oDp:cCtaGp2,oDp:cCtaGp3,oDp:cCtaGp4,oDp:cCtaGp5,oDp:cCtaGp6}
    LOCAL cWhereCta:="",aCtaCod:={},aCtaCombo:={}
+   LOCAL aCodMon  :=ATABLE("SELECT MON_CODIGO,MON_DESCRI FROM DPTABMON WHERE MON_ACTIVO=1")
+   LOCAL aDesMon  :=ATABLE("SELECT MON_DESCRI FROM DPTABMON WHERE MON_ACTIVO=1")
 
    ADEPURA(aCtas,{|a,n| Empty(a)})
 
@@ -29,7 +31,7 @@ PROCE MAIN(cWhere,cCodSuc,nPeriodo,dDesde,dHasta,cTitle,aCodCta)
    // Solo las Cuentas Definidas para su Utilización
 
    FOR I=1 TO LEN(aCtas)
-      aCtas[I]:=ALLTRIM(aCtas[I])
+      aCtas[I] :=ALLTRIM(aCtas[I])
       cWhereCta:=cWhereCta+ IIF(Empty(cWhereCta),""," OR ")+;
                  "LEFT(CTA_CODIGO,"+LSTR(LEN(aCtas[I]))+")"+GetWhere("=",aCtas[I])
    NEXT I
@@ -60,13 +62,15 @@ PROCE MAIN(cWhere,cCodSuc,nPeriodo,dDesde,dHasta,cTitle,aCodCta)
 
    ENDIF 
 
+   SQLUPDATE("DPCTA","CTA_CODMON","","CTA_PROPIE"+GetWhere("<>","Moneda Extranjera"))
+
    AEVAL(aCtas,{|a,n| AADD(aCtaCod,{a,SQLGET("DPCTA","CTA_DESCRI","CTA_CODIGO"+GetWhere("=",a))})})
 
    ADEPURA(aCtas,{|a,n| Empty(a[2])})
    AEVAL(aCtaCod,{|a,n|AADD(aCtaCombo,a[2])})
    AADD(aCtaCombo,"Todas")
 
-   cTitle:="Propiedades de las Cuentas" +IF(Empty(cTitle),"",cTitle)+" "+oDp:cCtaMod
+   cTitle:="Configuración y Propiedades de las Cuentas" +IF(Empty(cTitle),"",cTitle)+" "+oDp:cCtaMod
 
    oDp:oFrm:=NIL
 
@@ -79,7 +83,9 @@ PROCE MAIN(cWhere,cCodSuc,nPeriodo,dDesde,dHasta,cTitle,aCodCta)
       cWhereCta:=GetWhereOr("CTA_CODIGO",aCodCta)
    ENDIF
 
-   cWhere:=IIF(Empty(cWhere),""," AND ")+cWhereCta
+   IF Empty(cWhere)
+      cWhere:= cWhereCta
+   ENDIF
 
    aData :=LEERDATA(HACERWHERE(dDesde,dHasta,cWhere),NIL,cServer)
 
@@ -88,8 +94,7 @@ PROCE MAIN(cWhere,cCodSuc,nPeriodo,dDesde,dHasta,cTitle,aCodCta)
       RETURN .F.
    ENDIF
 
-// ViewArray(aData)
-//return 
+//   ViewArray(aData)
 
    ViewData(aData,cTitle)
 
@@ -135,6 +140,8 @@ FUNCTION ViewData(aData,cTitle)
    oDPCTAPROP:aCtaCombo:=aCtaCombo
    oDPCTAPROP:cCodigo  :=ATAIL(aCtaCombo)
    oDPCTAPROP:nAsientos:=7
+   oDPCTAPROP:aCodMon  :=ACLONE(aCodMon)
+   oDPCTAPROP:aDesMon  :=ACLONE(aDesMon)
 
    ADEPURA(oDPCTAPROP:aCtaBg,{|a,n|Empty(a)})
    ADEPURA(oDPCTAPROP:aCtaGp,{|a,n|Empty(a)})
@@ -164,14 +171,14 @@ FUNCTION ViewData(aData,cTitle)
    oCol:=oDPCTAPROP:oBrw:aCols[1]
    oCol:cHeader      :='Código'
    oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oDPCTAPROP:oBrw:aArrayData ) } 
-   oCol:nWidth       := 160
+   oCol:nWidth       := 140
    oCol:nEditType    :=1
    oCol:bOnPostEdit  :={|oCol,uValue|oDPCTAPROP:PUTVALOR(oCol,uValue,1,NIL,NIL,"CTA_CODIGO")}
 
    oCol:=oDPCTAPROP:oBrw:aCols[2]
    oCol:cHeader      :='Descripción'
    oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oDPCTAPROP:oBrw:aArrayData ) } 
-   oCol:nWidth       := 320
+   oCol:nWidth       := 300
    oCol:nEditType    :=1
    oCol:bOnPostEdit  :={|oCol,uValue|oDPCTAPROP:PUTVALOR(oCol,uValue,2,NIL,NIL,"CTA_DESCRI")}
 
@@ -179,62 +186,57 @@ FUNCTION ViewData(aData,cTitle)
    oCol:cHeader      :='Propiedad'
    oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oDPCTAPROP:oBrw:aArrayData ) } 
    oCol:nWidth       := 140
-   oCol:oFont        :=oFontB
+   oCol:oDataFont    :=oFontB
+   oCol:bOnPostEdit  :={|oCol,uValue|oDPCTAPROP:CTAGUARDAR(oCol,uValue)}
+
+   oCol:=oDPCTAPROP:oBrw:aCols[4]
+   oCol:cHeader      :='Código'+CRLF+"Moneda"
+   oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oDPCTAPROP:oBrw:aArrayData ) } 
+   oCol:nWidth       := 80
+// oCol:oDataFont    :=oFontB
    oCol:bOnPostEdit  :={|oCol,uValue|oDPCTAPROP:CTAGUARDAR(oCol,uValue)}
 
 
-   oCol:=oDPCTAPROP:oBrw:aCols[4]
+   oCol:=oDPCTAPROP:oBrw:aCols[4+1]
    oCol:cHeader      :='Ret'+CRLF+"ISLR"
    oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oDPCTAPROP:oBrw:aArrayData ) } 
    oCol:nWidth       := 60
-   oCol:oFont        :=oFontB
+//   oCol:oFont        :=oFontB
 
-   oCol:=oDPCTAPROP:oBrw:aCols[5]
+   oCol:=oDPCTAPROP:oBrw:aCols[5+1]
    oCol:cHeader      :='Descripción'+CRLF+"Retención"
    oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oDPCTAPROP:oBrw:aArrayData ) } 
    oCol:nWidth       := 190
-   oCol:oFont        :=oFontB
+//   oCol:oFont        :=oFontB
 
-   oCol:=oDPCTAPROP:oBrw:aCols[6]
+   oCol:=oDPCTAPROP:oBrw:aCols[6+1]
    oCol:cHeader      :='DPJ26'
    oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oDPCTAPROP:oBrw:aArrayData ) } 
    oCol:nWidth       := 60
-   oCol:oFont        :=oFontB
+// oCol:oFont        :=oFontB
    oCol:nDataStrAlign:= AL_RIGHT 
    oCol:nHeadStrAlign:= AL_RIGHT 
    oCol:nFootStrAlign:= AL_RIGHT 
 
-   oCol:=oDPCTAPROP:oBrw:aCols[7]
+   oCol:=oDPCTAPROP:oBrw:aCols[7+1]
    oCol:cHeader      :='Cód'+CRLF+"Int."
    oCol:bLClickHeader:= {|r,c,f,o| SortArray( o, oDPCTAPROP:oBrw:aArrayData ) } 
    oCol:nWidth       := 90
-   oCol:oFont        :=oFontB
-//   oCol:nDataStrAlign:= AL_RIGHT 
-//   oCol:nHeadStrAlign:= AL_RIGHT 
-//   oCol:nFootStrAlign:= AL_RIGHT 
+//   oCol:oFont        :=oFontB
 
-
-   oCol:=oDPCTAPROP:oBrw:aCols[8]
+   oCol:=oDPCTAPROP:oBrw:aCols[8+1]
    oCol:cHeader      :='Acepta'+CRLF+'Asientos'
    oCol:nWidth       := 65
    oCol:AddBmpFile("BITMAPS\checkrojo.bmp")
    oCol:AddBmpFile("BITMAPS\checkverde.bmp")
-   oCol:bBmpData    := { |oBrw|oBrw:=oDPCTAPROP:oBrw,IIF(oBrw:aArrayData[oBrw:nArrayAt,8],1,2) }
+   oCol:bBmpData    := { |oBrw|oBrw:=oDPCTAPROP:oBrw,IIF(oBrw:aArrayData[oBrw:nArrayAt,8+1],1,2) }
    oCol:bStrData:={||""}
-
 
    oDPCTAPROP:oBrw:aCols[1]:cFooter:=" #"+LSTR(LEN(aData))
 
-/*
-   oDPCTAPROP:oBrw:bClrStd               := {|oBrw,nClrText,aData|oBrw:=oDPCTAPROP:oBrw,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
-                                           nClrText:=IIF(oBrw:aArrayData[oBrw:nArrayAt,8],CLR_HBLUE,5197647),;
-                                           nClrText:=IIF(!Empty(oBrw:aArrayData[oBrw:nArrayAt,3]),CLR_GREEN,nClrText),;
-                                          {nClrText,iif( oBrw:nArrayAt%2=0, oDPCTAPROP:nClrPane1, oDPCTAPROP:nClrPane2 ) } }
-*/
-
 
    oDPCTAPROP:oBrw:bClrStd               := {|oBrw,nClrText,aData|oBrw:=oDPCTAPROP:oBrw,aData:=oBrw:aArrayData[oBrw:nArrayAt],;
-                                           nClrText:=IIF(oBrw:aArrayData[oBrw:nArrayAt,8],oDPCTAPROP:nClrText1,oDPCTAPROP:nClrText2),;
+                                           nClrText:=IIF(oBrw:aArrayData[oBrw:nArrayAt,8+1],oDPCTAPROP:nClrText1,oDPCTAPROP:nClrText2),;
                                            nClrText:=IIF(!Empty(oBrw:aArrayData[oBrw:nArrayAt,3]),oDPCTAPROP:nClrText3,nClrText),;
                                           {nClrText,iif( oBrw:nArrayAt%2=0, oDPCTAPROP:nClrPane1, oDPCTAPROP:nClrPane2 ) } }
 
@@ -246,14 +248,17 @@ FUNCTION ViewData(aData,cTitle)
 
    oDPCTAPROP:oBrw:bChange:={||oDPCTAPROP:BRWCHANGE()}
    oDPCTAPROP:oBrw:CreateFromCode()
-    oDPCTAPROP:bValid   :={|| EJECUTAR("BRWSAVEPAR",oDPCTAPROP)}
-    oDPCTAPROP:BRWRESTOREPAR()
-   oDPCTAPROP:oBrw:DelCol(9)
+
+   oDPCTAPROP:bValid   :={|| EJECUTAR("BRWSAVEPAR",oDPCTAPROP)}
+   oDPCTAPROP:BRWRESTOREPAR()
+  // oDPCTAPROP:oBrw:DelCol(9)
 
    oDPCTAPROP:oWnd:oClient := oDPCTAPROP:oBrw
    oDPCTAPROP:oFocus       :=oDPCTAPROP:oBrw
 
    oDPCTAPROP:Activate({||oDPCTAPROP:ViewDatBar(oDPCTAPROP)})
+
+   AEVAL(oBar:aControls,{|o,n| o:ForWhen(.T.)})
 
    DPFOCUS(oDPCTAPROP:oBrw)
 
@@ -490,19 +495,70 @@ FUNCTION ViewDatBar(oDPCTAPROP)
   EVAL(oDPCTAPROP:oBrw:bChange)
  
   oBar:SetColor(CLR_BLACK,oDp:nGris)
+  oBar:SetSize(NIL,110,.T.)
 
   nLin:=32
   AEVAL(oBar:aControls,{|o,n|o:SetColor(CLR_BLACK,oDp:nGris),;
                              nLin:=nLin+o:nWidth()})
-
-  @01,nLin+10 SAY " Cuentas " OF oBar SIZE 190+90,20 BORDER PIXEL FONT oFont COLOR 0,oDp:nClrYellow
+  nLin:=nLin-330
+  @65,nLin+10 SAY " Cuentas " OF oBar SIZE 190-40,15 BORDER PIXEL FONT oFont COLOR 0,oDp:nClrYellow
 
   ADEPURA(oDPCTAPROP:aCtaCombo,{|a,n| Empty(a)})
 
-  @21,nLin+10 COMBOBOX oDPCTAPROP:oCodigo VAR oDPCTAPROP:cCodigo ITEMS oDPCTAPROP:aCtaCombo OF oBar SIZE 190+90,20;
+  @80,nLin+10 COMBOBOX oDPCTAPROP:oCodigo VAR oDPCTAPROP:cCodigo ITEMS oDPCTAPROP:aCtaCombo OF oBar SIZE 190-40,20;
          ON CHANGE oDPCTAPROP:FILTRARCUENTAS() FONT oFont PIXEL
 
   oDPCTAPROP:oBar:=oBar
+
+  oDPCTAPROP:aBalance:={}
+  AADD(oDPCTAPROP:aBalance,oDp:cCtaBg1)
+  AADD(oDPCTAPROP:aBalance,oDp:cCtaBg2)
+  AADD(oDPCTAPROP:aBalance,oDp:cCtaBg3)
+
+  AADD(oDPCTAPROP:aBalance,oDp:cCtaGp1)
+  AADD(oDPCTAPROP:aBalance,oDp:cCtaGp2)
+  AADD(oDPCTAPROP:aBalance,oDp:cCtaGp3)
+  AADD(oDPCTAPROP:aBalance,oDp:cCtaGp4)
+  AADD(oDPCTAPROP:aBalance,oDp:cCtaGp5)
+  AADD(oDPCTAPROP:aBalance,oDp:cCtaGp6)
+
+ 
+  ADEPURA(oDPCTAPROP:aBalance,{|a,n| Empty(a)})
+
+  AADD(oDPCTAPROP:aBalance," ")
+
+//  oBar:SetSize(NIL,80+15,.T.)
+
+  FOR I=1 TO LEN(oDPCTAPROP:aBalance)
+
+     @ 44+23,20+(35*(I-1))+0 BUTTON oBtn PROMPT oDPCTAPROP:aBalance[I] SIZE 27,24;
+                           FONT oFont;
+                           OF oBar;
+                           PIXEL;
+                           ACTION (1=1)
+
+     oBtn:bAction:=BloqueCod([oDPCTAPROP:BUSCARLETRA(]+GetWhere("",oDPCTAPROP:aBalance[I])+[)])
+     oBtn:CARGO:=oDPCTAPROP:aBalance[I]
+
+     IF !ISSQLFIND("DPCTA","CTA_CODIGO"+GetWhere("=",oDPCTAPROP:aBalance[I]))
+        oBtn:bWhen:={||.F.}
+     ENDIF
+
+     IF Empty(oDPCTAPROP:aBalance[I])
+
+       oBtn:cToolTip:="Restaurar Todas las Cuentas"
+
+     ELSE
+
+       oBtn:cToolTip:=ALLTRIM(SQLGET("DPCTA","CTA_DESCRI","CTA_CODIGO"+GetWhere("=",oDPCTAPROP:aBalance[I])))
+
+     ENDIF
+
+  NEXT I
+
+RETURN .T.
+
+
   
 
 RETURN .T.
@@ -598,14 +654,15 @@ FUNCTION LEERDATA(cWhere,oBrw,cServer)
 
    ENDIF
 
-   cSql:=[ SELECT CTA_CODIGO,CTA_DESCRI,CTA_PROPIE,CTA_CODCON,CTR_CODIGO,CTA_DPJ26,CTA_CODINT,CTA_CTADET,0 AS LOGICO FROM DPCTA ]+;
+   cSql:=[ SELECT CTA_CODIGO,CTA_DESCRI,CTA_PROPIE,CONCAT(CTA_CODMON," ",MON_DESCRI) AS CTA_CODMON,CTA_CODCON,CTR_CODIGO,CTA_DPJ26,CTA_CODINT,CTA_CTADET FROM DPCTA ]+;
          [ LEFT JOIN ]+oDp:cDsnConfig+[.DPCONRETISLR ON CTA_CODCON=CTR_CODIGO ]+;
+         [ LEFT JOIN DPTABMON ON CTA_CODMON=MON_CODIGO ]+;
          [ WHERE CTA_CODMOD]+GetWhere("=",oDp:cCtaMod)+IIF(Empty(cWhere),[],[ AND ])+cWhere+;
          [ GROUP BY CTA_CODIGO]+CRLF+;
          [ ORDER BY CTA_CODIGO]
 
    aData:=ASQL(cSql,oDb)
-   AEVAL(aData,{|a,n|aData[n,9]=.F.})
+   // AEVAL(aData,{|a,n|aData[n,9+1]=.F.})
 
    IF EMPTY(aData)
       aData:=EJECUTAR("SQLARRAYEMPTY",cSql)
@@ -646,8 +703,9 @@ RETURN .T.
 */
 FUNCTION BRWCHANGE()
    LOCAL cCodCta:=oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,1]
-   LOCAL lDet   :=oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,8]
-   LOCAL lDet2  :=oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,9]
+   LOCAL cTipCta:=oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,3]
+   LOCAL lDet   :=oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,8+1]
+   LOCAL lDet2  :=lDet // oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,9+1]
    LOCAL oCol   :=oDPCTAPROP:oBrw:aCols[3]
    LOCAL lCtaBg :=.F.
 
@@ -674,7 +732,7 @@ FUNCTION BRWCHANGE()
         oCol:nEditType      :=EDIT_LISTBOX
 
         // Casilla DPJ26
-        oCol   :=oDPCTAPROP:oBrw:aCols[6]
+        oCol   :=oDPCTAPROP:oBrw:aCols[6+1]
         oCol:nEditType  :=EDIT_GET_BUTTON
         oCol:bOnPostEdit:={|oCol,uValue|oDPCTAPROP:CTADPJ26(oCol,uValue)}
         oCol:bEditBlock :={||oDPCTAPROP:BROWSEDPJ26()}
@@ -687,12 +745,34 @@ FUNCTION BRWCHANGE()
 
    ENDIF
 
-   oCol   :=oDPCTAPROP:oBrw:aCols[6]
+   /*
+   // Moneda Extranjera
+   */
+
+   oCol:=oDPCTAPROP:oBrw:aCols[4]
+   oCol:aEditListTxt   :={}
+   oCol:aEditListBound :={}
+   oCol:nEditType      :=0
+
+   IF "Moneda"$cTipCta
+
+     oCol:nEditType      :=EDIT_LISTBOX
+     oCol:aEditListTxt   :=oDPCTAPROP:aDesMon
+     oCol:aEditListBound :=oDPCTAPROP:aCodMon
+
+   ENDIF
+   
+   oCol:bOnPostEdit:={|oCol,uValue|oDPCTAPROP:CTACODMON(oCol,uValue)}
+
+
+   // oCol:nEditType  :=EDIT_GET_BUTTON
+
+   oCol   :=oDPCTAPROP:oBrw:aCols[6+1]
    oCol:nEditType  :=EDIT_GET_BUTTON
    oCol:bOnPostEdit:={|oCol,uValue|oDPCTAPROP:CTADPJ26(oCol,uValue)}
    oCol:bEditBlock :={||oDPCTAPROP:BROWSEDPJ26()}
 
-   oCol   :=oDPCTAPROP:oBrw:aCols[7]  
+   oCol   :=oDPCTAPROP:oBrw:aCols[7+1]  
 
    IF lDet .OR. lDet2
      // Código de Integración
@@ -709,7 +789,6 @@ FUNCTION BRWCHANGE()
       oCol:aEditListTxt   :={}
       oCol:aEditListBound :={}
       oCol:nEditType      :=0
-//      oDPCTAPROP:oBrw:aCols[6]:nEditType:=0
    ENDIF
 
 RETURN .T.
@@ -760,10 +839,11 @@ FUNCTION BRWREFRESCAR()
 RETURN NIL
 
 FUNCTION CTAGUARDAR(oCol,uValue)
- LOCAL lDet   :=oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,7+1]
- LOCAL cCodCta:=ALLTRIM(oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,1])
- LOCAL nAt    :=oDPCTAPROP:oBrw:nArrayAt
- LOCAL aCta   :={},I
+ LOCAL lDet    :=oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,9]
+ LOCAL cCodCta :=ALLTRIM(oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,1])
+ LOCAL nAt     :=oDPCTAPROP:oBrw:nArrayAt
+ LOCAL nArrayAt:=nAt
+ LOCAL aCta    :={},I
  LOCAL oTable,aLine:={},aFields:={}
  LOCAL cWhere 
 
@@ -771,9 +851,9 @@ FUNCTION CTAGUARDAR(oCol,uValue)
     uValue:=""
  ENDIF
 
- IF "Ninguno"$uValue
-     uValue:=""
- ENDIF
+// IF "Ninguno"$uValue
+//     uValue:=""
+// ENDIF
 
  CursorWait()
 
@@ -796,30 +876,12 @@ FUNCTION CTAGUARDAR(oCol,uValue)
 
  ENDIF 
 
- cWhere:=GetWhereOr("CTA_CODIGO",aCta)
-
-// ? cWhere
+ cWhere:="CTA_CODMOD"+GetWhere("=",oDp:cCtaMod)+" AND "+GetWhereOr("CTA_CODIGO",aCta)
 
  SQLUPDATE("DPCTA","CTA_PROPIE",uValue,cWhere)
 
-/*
- FOR I=1 TO LEN(aCta)
-    
-    oDp:lExcluye:=.F.
-    oTable:=OpenTable("SELECT CTA_CODIGO,CTA_PROPIE FROM DPCTA WHERE CTA_CODMOD"+GetWhere("=",oDp:cCtaMod)+" AND CTA_CODIGO"+GetWhere("=",aCta[I]),.T.)
-//? oDp:cCtaMod,cCodCta,aCta[I],CLPCOPY(oDp:cSql)
-//? oTable:Browse()
-    oTable:cPrimary:="CTA_CODIGO"
-    oTable:SetAuditar()
-    oTable:Replace("CTA_PROPIE",uValue)
-    oTable:Commit(oTable:cWhere)
-    oTable:End()
-//? oDp:cSql
- NEXT I
-*/
-  oDPCTAPROP:oBrw:Refresh(.F.)
-  oDPCTAPROP:oBrw:nArrayAt:=nAt
-
+ oDPCTAPROP:oBrw:Refresh(.F.)
+ oDPCTAPROP:oBrw:nArrayAt:=MIN(nAt,nArrayAt)
  
 RETURN .T.
 
@@ -835,7 +897,7 @@ RETURN .T.
 // Guarda Casilla DPJ26
 */
 FUNCTION CTADPJ26(oCol,uValue)
-   LOCAL oTable,aCta:={},I
+   LOCAL oTable,aCta:={},I,cWhere
    LOCAL cCodCta:=ALLTRIM(oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,1])
    LOCAL aData  :=EJECUTAR("DEPDPJ26"),nAt
 
@@ -853,17 +915,22 @@ FUNCTION CTADPJ26(oCol,uValue)
 
    AADD(aCta,cCodCta)
 
-   FOR I=1 TO LEN(aCta)
-     oTable:=OpenTable("SELECT CTA_CODIGO,CTA_DPJ26 FROM DPCTA WHERE CTA_CODMOD"+GetWhere("=",oDp:cCtaMod)+" AND CTA_CODIGO"+GetWhere("=",aCta[I]),.T.)
-     oTable:cPrimary:="CTA_CODIGO"
-     oTable:SetAuditar()
-     oTable:Replace("CTA_DPJ26",uValue)
-     oTable:Commit(oTable:cWhere)
-     oTable:End()
-   NEXT I
+  cWhere:="CTA_CODMOD"+GetWhere("=",oDp:cCtaMod)+" AND "+GetWhereOr("CTA_CODIGO",aCta)
 
-   oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,6]:=uValue
-   oDPCTAPROP:oBrw:DrawLine(.T.)
+  SQLUPDATE("DPCTA","CTA_DPJ26",uValue,cWhere)
+
+  WHILE nAt<=LEN(oDPCTAPROP:oBrw:aArrayData) .AND. cCodCta=LEFT(oDPCTAPROP:oBrw:aArrayData[nAt,1],LEN(cCodCta))
+
+      oDPCTAPROP:oBrw:aArrayData[nAt,3]:=uValue 
+
+      AADD(aCta,oDPCTAPROP:oBrw:aArrayData[nAt,1])
+
+      nAt++
+   ENDDO
+
+
+  oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,6+1]:=uValue
+  oDPCTAPROP:oBrw:DrawLine(.T.)
 
 RETURN .T.
 
@@ -931,6 +998,38 @@ FUNCTION VERCXP()
 
   EJECUTAR("BRDOCPROCTADET","LEFT(CCD_CODCTA,"+LSTR(nLen)+")"+GetWhere("=",cCodCta))
 RETURN .T.
+
+FUNCTION CTACODMON(oCol,cCodMon)
+  LOCAL cCod:=LEFT(cCodMon,3)
+  LOCAL aCta:={},I,cWhere
+  LOCAL cCodCta:=ALLTRIM(oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,1])
+  LOCAL nLen   :=LEN(cCodCta)
+  LOCAL nAt    :=oDPCTAPROP:oBrw:nArrayAt
+
+  cWhere:="CTA_CODMOD"+GetWhere("=",oDp:cCtaMod)+" AND LEFT(CTA_CODIGO,"+LSTR(nLen)+")"+GetWhere("=",cCodCta)
+
+  SQLUPDATE("DPCTA","CTA_CODMON",cCod,cWhere)
+
+  WHILE nAt<=LEN(oDPCTAPROP:oBrw:aArrayData) .AND. cCodCta=LEFT(oDPCTAPROP:oBrw:aArrayData[nAt,1],LEN(cCodCta))
+
+      oDPCTAPROP:oBrw:aArrayData[nAt,4]:=cCodMon 
+
+      AADD(aCta,oDPCTAPROP:oBrw:aArrayData[nAt,1])
+
+      nAt++
+
+  ENDDO
+
+
+  oDPCTAPROP:oBrw:aArrayData[oDPCTAPROP:oBrw:nArrayAt,4]:=cCodMon
+  oDPCTAPROP:oBrw:DrawLine(.T.)
+  // ? cCodMon
+
+RETURN .T.
+
+FUNCTION BUSCARLETRA(cLetra)
+RETURN EJECUTAR("BRWBUSCARLETRA",cLetra,oDPCTAPROP:oBrw,1)
+
 
 
 // EOF

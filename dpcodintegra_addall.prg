@@ -9,7 +9,33 @@
 #INCLUDE "DPXBASE.CH"
 
 PROCE MAIN()
+  LOCAL cFile:="ejemplo\DPCODINTEGRA.dbf"
 
+  // importamos desde el catalogo de codigos de integración
+  IF FILE(cFile)
+
+     CLOSE ALL
+     USE (cFile)
+     GO TOP
+     WHILE !EOF()
+
+       IF ISSQLFIND("DPCODINTEGRA","CIN_CODIGO"+GetWhere("=",CIN_CODIGO))
+
+
+         EJECUTAR("CREATERECORD","DPCODINTEGRA",{"CIN_CODIGO","CIN_ABREVI","CIN_ACTIVO","CIN_DESCRI","CIN_TEXTO"},;
+                                                {CIN_CODIGO,CIN_ABREVI,CIN_ACTIVO  ,CIN_DESCRI,CIN_TEXTO},;
+                                   NIL,.T.,"CIN_CODIGO"+GetWhere("=",CIN_CODIGO))
+
+         ENDIF
+      
+       SKIP       
+
+     ENDDO
+
+     USE
+
+  ENDIF
+  
   EJECUTAR("DPCODINTEGRA_ADD","DIFRECMON"  ,"Diferencia por Reconversión Monetaría")
   EJECUTAR("DPCODINTEGRA_ADD","INDEFINIDA" ,"Integración Indefinida con Asientos ")
   EJECUTAR("DPCODINTEGRA_ADD","DIFCBTPAG"  ,"Diferencia en Comprobantes de Pago")
@@ -81,6 +107,12 @@ PROCE MAIN()
   EJECUTAR("DPCODINTEGRA_ADD","COMRTI","Retención de IVA en Compras")
   EJECUTAR("DPCODINTEGRA_ADD","COMRET","Retención de ISLR en Compras")
   EJECUTAR("DPCODINTEGRA_ADD","COMMUN","Retención Municipal en Compras")
+
+  EJECUTAR("DPCODINTEGRA_ADD","COMEXT","Compras Internacionales")
+  EJECUTAR("DPCODINTEGRA_ADD","COMNAC","Compras Nacionales")
+
+  EJECUTAR("DPCODINTEGRA_ADD","CXPEXT","Cuentas por Pagar Internacionales")
+  EJECUTAR("DPCODINTEGRA_ADD","CXPNAC","Compras por Pagar Nacionales")
 
 RETURN .T.
 // EOF

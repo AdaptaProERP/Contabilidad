@@ -10,7 +10,7 @@
 
 PROCE MAIN()
 
-  EJECUTAR("DPCODINTEGRA_ADD","DIFRECMON"  ,"Diferencia por Reconversión Monetarí")
+  EJECUTAR("DPCODINTEGRA_ADD","DIFRECMON"  ,"Diferencia por Reconversión Monetaría")
   EJECUTAR("DPCODINTEGRA_ADD","INDEFINIDA" ,"Integración Indefinida con Asientos ")
   EJECUTAR("DPCODINTEGRA_ADD","DIFCBTPAG"  ,"Diferencia en Comprobantes de Pago")
   EJECUTAR("DPCODINTEGRA_ADD","DIFRECING"  ,"Diferencia en Recibos de Ingreso")
@@ -50,8 +50,37 @@ PROCE MAIN()
   EJECUTAR("DPCODINTEGRA_ADD","DIFINGAXI","Ingreso por Ajuste por Inflación")
   EJECUTAR("DPCODINTEGRA_ADD","DIFPATAXI","Diferencia Patrimonial por Inflación")
 
+  EJECUTAR("DPCODINTEGRA_ADD","SERIESFISCAL","Series Fiscales")
+
   EJECUTAR("DPCODINTEGRA_ADD","VTASER","Ingresos/Venta por Servicios" ) // Planilla DPJ26, Casilla 700 y 797
   EJECUTAR("DPCODINTEGRA_ADD","VTAHON","Ingresos/Venta por Honorarios") // Planilla DPJ26, Casilla 700 y 797
+
+  EJECUTAR("DPCODINTEGRA_ADD","VTAPUB","Ventas Sector Público")
+
+  EJECUTAR("DPCODINTEGRA_ADD","INVCTAACT"  ,"Inventario Activos")
+  EJECUTAR("DPCODINTEGRA_ADD","INVCTAINI"  ,"Inventario Inicial")
+  EJECUTAR("DPCODINTEGRA_ADD","INVCTAFIN"  ,"Inventario Final")
+  EJECUTAR("DPCODINTEGRA_ADD","INVCTACOM"  ,"Inventario Compras")
+  EJECUTAR("DPCODINTEGRA_ADD","INVCTACOS"  ,"Inventario Costo de Venta")
+  EJECUTAR("DPCODINTEGRA_ADD","INVCTACOM"  ,"Inventario Compras")
+  EJECUTAR("DPCODINTEGRA_ADD","INVCTAVTA"  ,"Inventario Ventas")
+  EJECUTAR("DPCODINTEGRA_ADD","INVCTADVV"  ,"Inventario Devolución de Ventas")
+  EJECUTAR("DPCODINTEGRA_ADD","INVCTADVC"  ,"Inventario Deolución de Compras")
+
+  EJECUTAR("DPCODINTEGRA_ADD","VTAIVA"  ,"IVA Transacciones de Venta")
+  EJECUTAR("DPCODINTEGRA_ADD","COMIVA"  ,"IVA Transacciones de Compras")
+
+  EJECUTAR("DPCODINTEGRA_ADD","VTACRE","Nota de Crédito en Ventas")
+  EJECUTAR("DPCODINTEGRA_ADD","VTADEB","Nota de Débito en Ventas")
+  EJECUTAR("DPCODINTEGRA_ADD","VTARTI","Retención de IVA en Ventas")
+  EJECUTAR("DPCODINTEGRA_ADD","VTARET","Retención de ISLR en Ventas")
+  EJECUTAR("DPCODINTEGRA_ADD","VTAMUN","Retención Municipal en Ventas")
+
+  EJECUTAR("DPCODINTEGRA_ADD","COMCRE","Nota de Crédito en Compras")
+  EJECUTAR("DPCODINTEGRA_ADD","COMDEB","Nota de Débito en Compras")
+  EJECUTAR("DPCODINTEGRA_ADD","COMRTI","Retención de IVA en Compras")
+  EJECUTAR("DPCODINTEGRA_ADD","COMRET","Retención de ISLR en Compras")
+  EJECUTAR("DPCODINTEGRA_ADD","COMMUN","Retención Municipal en Compras")
 
 RETURN .T.
 // EOF
